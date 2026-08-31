@@ -21,23 +21,37 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
 
-      - name: Grant execute permission for gradlew
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Restore debug keystore
         run: |
-          if [ -f "./gradlew" ]; then
-            chmod +x gradlew
+          if [ -f "debug.keystore.base64" ] && [ ! -f "debug.keystore" ]; then
+            echo "Restoring debug.keystore from debug.keystore.base64..."
+            base64 -d debug.keystore.base64 > debug.keystore
+          elif [ ! -f "debug.keystore" ]; then
+            echo "Generating fallback debug.keystore..."
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
 
       - name: Setup environment secrets template
         run: |
-          if [ ! -f ".env" ]; then
+          if [ -f ".env.example" ] && [ ! -f ".env" ]; then
             cp .env.example .env
+          elif [ ! -f ".env" ]; then
+            touch .env
           fi
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 'wrapper'
 
       - name: Run Unit Tests
         run: |
           if [ -f "./gradlew" ]; then
+            chmod +x gradlew
             ./gradlew testDebugUnitTest --no-daemon --stacktrace
           else
             gradle testDebugUnitTest --no-daemon --stacktrace
@@ -46,6 +60,7 @@ jobs:
       - name: Build Debug APK
         run: |
           if [ -f "./gradlew" ]; then
+            chmod +x gradlew
             ./gradlew assembleDebug --no-daemon --stacktrace
           else
             gradle assembleDebug --no-daemon --stacktrace
