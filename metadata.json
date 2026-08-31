@@ -1,0 +1,6 @@
+{
+  "name": "Nexus 智能助手",
+  "description": "基于 Google Gemini 模型的全能移动端 AI 智能体助手，支持 Office 文档处理、Codex 编程开发、自动化工具与本地长期记忆。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
