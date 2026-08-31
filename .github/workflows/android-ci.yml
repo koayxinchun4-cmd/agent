@@ -25,46 +25,52 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Restore debug keystore
+      - name: Accept Android SDK Licenses & Install Components
         run: |
-          if [ -f "debug.keystore.base64" ] && [ ! -f "debug.keystore" ]; then
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools" || true
+
+      - name: Restore Debug Keystore
+        run: |
+          if [ -f "debug.keystore.base64" ]; then
             echo "Restoring debug.keystore from debug.keystore.base64..."
-            base64 -d debug.keystore.base64 > debug.keystore
-          elif [ ! -f "debug.keystore" ]; then
-            echo "Generating fallback debug.keystore..."
+            base64 -d debug.keystore.base64 > debug.keystore || base64 --decode debug.keystore.base64 > debug.keystore
+          fi
+          if [ ! -f "debug.keystore" ]; then
+            echo "Generating new debug.keystore..."
             keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
+          # Also place in app/ directory if referenced relatively
+          cp debug.keystore app/debug.keystore 2>/dev/null || true
 
-      - name: Setup environment secrets template
+      - name: Setup Environment Secrets
         run: |
           if [ -f ".env.example" ] && [ ! -f ".env" ]; then
             cp .env.example .env
           elif [ ! -f ".env" ]; then
             touch .env
           fi
+          # Also ensure app directory has .env if needed
+          cp .env app/.env 2>/dev/null || true
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 'wrapper'
+          gradle-version: '9.3.1'
+          cache-disabled: false
+
+      - name: Create Test Output Directories
+        run: |
+          mkdir -p app/src/test/screenshots
+          mkdir -p src/test/screenshots
 
       - name: Run Unit Tests
         run: |
-          if [ -f "./gradlew" ]; then
-            chmod +x gradlew
-            ./gradlew testDebugUnitTest --no-daemon --stacktrace
-          else
-            gradle testDebugUnitTest --no-daemon --stacktrace
-          fi
+          gradle testDebugUnitTest --no-daemon --stacktrace
 
       - name: Build Debug APK
         run: |
-          if [ -f "./gradlew" ]; then
-            chmod +x gradlew
-            ./gradlew assembleDebug --no-daemon --stacktrace
-          else
-            gradle assembleDebug --no-daemon --stacktrace
-          fi
+          gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
