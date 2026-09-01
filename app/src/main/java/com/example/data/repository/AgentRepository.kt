@@ -43,6 +43,10 @@ class AgentRepository(private val context: Context) {
         private const val PREF_GITHUB_REPO = "default_github_repo"
         private const val PREF_GITHUB_CLIENT_ID = "github_oauth_client_id"
         private const val PREF_GITHUB_CLIENT_SECRET = "github_oauth_client_secret"
+        private const val PREF_WHATSAPP_TOKEN = "whatsapp_cloud_token"
+        private const val PREF_WHATSAPP_PHONE_ID = "whatsapp_phone_number_id"
+        private const val PREF_WHATSAPP_VERIFY_TOKEN = "whatsapp_verify_token"
+        private const val PREF_ADMIN_WHATSAPP_NUMBER = "admin_whatsapp_number"
         private const val DEFAULT_MODEL = "gemini-2.5-flash"
         // Default Client ID for Nexus Agent GitHub OAuth (or user can customize)
         const val DEFAULT_GITHUB_CLIENT_ID = "Iv23li82c0v1NexusDev"
@@ -59,6 +63,18 @@ class AgentRepository(private val context: Context) {
     fun clearGitHubToken() {
         prefs.edit().remove(PREF_GITHUB_TOKEN).apply()
     }
+
+    fun getWhatsAppToken(): String = prefs.getString(PREF_WHATSAPP_TOKEN, "") ?: ""
+    fun setWhatsAppToken(token: String) = prefs.edit().putString(PREF_WHATSAPP_TOKEN, token.trim()).apply()
+
+    fun getWhatsAppPhoneId(): String = prefs.getString(PREF_WHATSAPP_PHONE_ID, "") ?: ""
+    fun setWhatsAppPhoneId(id: String) = prefs.edit().putString(PREF_WHATSAPP_PHONE_ID, id.trim()).apply()
+
+    fun getWhatsAppVerifyToken(): String = prefs.getString(PREF_WHATSAPP_VERIFY_TOKEN, "my_custom_verify_token_123") ?: "my_custom_verify_token_123"
+    fun setWhatsAppVerifyToken(token: String) = prefs.edit().putString(PREF_WHATSAPP_VERIFY_TOKEN, token.trim()).apply()
+
+    fun getAdminWhatsAppNumber(): String = prefs.getString(PREF_ADMIN_WHATSAPP_NUMBER, "") ?: ""
+    fun setAdminWhatsAppNumber(number: String) = prefs.edit().putString(PREF_ADMIN_WHATSAPP_NUMBER, number.trim()).apply()
 
     fun getSkillPracticeCount(skillId: String): Int {
         return prefs.getInt("skill_practice_count_$skillId", 0)
@@ -378,6 +394,352 @@ class AgentRepository(private val context: Context) {
         }
     }
 
+    suspend fun replyGitHubIssue(
+        owner: String,
+        repo: String,
+        issueNumber: Int,
+        body: String
+    ): Result<com.example.data.api.GitHubCommentResponse> = withContext(Dispatchers.IO) {
+        try {
+            val token = getGitHubToken()
+            if (token.isBlank()) {
+                return@withContext Result.failure(IllegalStateException("回复 Issue 需要在设置中配置 GitHub Token 或通过 OAuth 授权。"))
+            }
+            val request = com.example.data.api.GitHubIssueCommentRequest(body = body)
+            val response = com.example.data.api.GitHubApiClient.service.createIssueComment(
+                owner = owner,
+                repo = repo,
+                issueNumber = issueNumber,
+                request = request,
+                token = "Bearer $token"
+            )
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val err = response.errorBody()?.string() ?: response.message()
+                Result.failure(Exception("回复 Issue 失败 ${response.code()}: $err"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun closeGitHubIssue(
+        owner: String,
+        repo: String,
+        issueNumber: Int
+    ): Result<com.example.data.api.GitHubIssue> = withContext(Dispatchers.IO) {
+        try {
+            val token = getGitHubToken()
+            if (token.isBlank()) {
+                return@withContext Result.failure(IllegalStateException("关闭 Issue 需要在设置中配置 GitHub Token 或通过 OAuth 授权。"))
+            }
+            val request = com.example.data.api.GitHubUpdateIssueRequest(state = "closed")
+            val response = com.example.data.api.GitHubApiClient.service.updateIssue(
+                owner = owner,
+                repo = repo,
+                issueNumber = issueNumber,
+                request = request,
+                token = "Bearer $token"
+            )
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val err = response.errorBody()?.string() ?: response.message()
+                Result.failure(Exception("关闭 Issue 失败 ${response.code()}: $err"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun sendWhatsAppMessage(
+        toNumber: String,
+        messageText: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val token = getWhatsAppToken()
+            val phoneId = getWhatsAppPhoneId()
+            val cleanTo = toNumber.replace("+", "").replace("-", "").replace(" ", "").trim()
+
+            if (token.isBlank() || phoneId.isBlank()) {
+                return@withContext Result.failure(IllegalStateException("请先在设置中配置 WhatsApp Token 与 Phone Number ID。"))
+            }
+            if (cleanTo.isBlank()) {
+                return@withContext Result.failure(IllegalArgumentException("目标 WhatsApp 手机号码不能为空。"))
+            }
+
+            val request = com.example.data.api.WhatsAppSendMessageRequest(
+                to = cleanTo,
+                text = com.example.data.api.WhatsAppTextMessage(body = messageText)
+            )
+
+            val response = com.example.data.api.WhatsAppApiClient.service.sendMessage(
+                phoneNumberId = phoneId,
+                token = "Bearer $token",
+                request = request
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                val msgId = response.body()?.messages?.firstOrNull()?.id ?: "OK"
+                Result.success("消息已成功发送至 WhatsApp (ID: $msgId)")
+            } else {
+                val errBody = response.errorBody()?.string() ?: response.message()
+                Result.failure(Exception("WhatsApp API 响应错误 ${response.code()}: $errBody"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun generateWhatsAppMicroserviceFiles(
+        geminiApiKey: String,
+        githubToken: String,
+        owner: String,
+        repo: String,
+        whatsappToken: String,
+        phoneNumberId: String,
+        verifyToken: String,
+        adminNumber: String
+    ): Map<String, String> {
+        val envContent = """
+PORT=3000
+
+# Google AI Studio API Key (https://aistudio.google.com/app/apikey)
+GEMINI_API_KEY=${if (geminiApiKey.isNotBlank()) geminiApiKey else "your_gemini_api_key_here"}
+
+# GitHub 配置 (Personal Access Token 或 OAuth Token)
+GITHUB_TOKEN=${if (githubToken.isNotBlank()) githubToken else "your_github_personal_access_token_here"}
+GITHUB_DEFAULT_OWNER=$owner
+GITHUB_DEFAULT_REPO=$repo
+
+# WhatsApp Business Cloud API 配置 (Meta for Developers)
+WHATSAPP_TOKEN=${if (whatsappToken.isNotBlank()) whatsappToken else "your_whatsapp_access_token_here"}
+WHATSAPP_PHONE_NUMBER_ID=${if (phoneNumberId.isNotBlank()) phoneNumberId else "your_whatsapp_phone_number_id_here"}
+WHATSAPP_VERIFY_TOKEN=$verifyToken
+ADMIN_WHATSAPP_NUMBER=${if (adminNumber.isNotBlank()) adminNumber else "60123456789"}
+""".trimIndent()
+
+        val packageJsonContent = """
+{
+  "name": "gemini-github-whatsapp",
+  "version": "1.0.0",
+  "description": "Nexus AI Agent - Gemini + GitHub + WhatsApp Automation Bridge",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@google/genai": "^0.1.1",
+    "@octokit/rest": "^21.1.1",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}
+""".trimIndent()
+
+        val serverJsContent = """
+require('dotenv').config();
+const express = require('express');
+const { GoogleGenAI } = require('@google/genai');
+const { Octokit } = require('@octokit/rest');
+const axios = require('axios');
+
+const app = express();
+app.use(express.json());
+
+// 初始化 API 客户端
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+
+// 定义 Gemini 在 Google AI Studio 中使用的工具 (Function Calling)
+const githubTools = [
+  {
+    name: 'listIssues',
+    description: '获取 GitHub 仓库当前的 Issue 列表',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        owner: { type: 'STRING', description: '仓库拥有者' },
+        repo: { type: 'STRING', description: '仓库名' }
+      }
+    }
+  },
+  {
+    name: 'replyIssue',
+    description: '在指定的 GitHub Issue 下发表评论回复',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        owner: { type: 'STRING', description: '仓库拥有者' },
+        repo: { type: 'STRING', description: '仓库名' },
+        issue_number: { type: 'NUMBER', description: 'Issue 编号' },
+        body: { type: 'STRING', description: '回复内容' }
+      },
+      required: ['issue_number', 'body']
+    }
+  },
+  {
+    name: 'closeIssue',
+    description: '关闭指定的 GitHub Issue',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        owner: { type: 'STRING', description: '仓库拥有者' },
+        repo: { type: 'STRING', description: '仓库名' },
+        issue_number: { type: 'NUMBER', description: 'Issue 编号' }
+      },
+      required: ['issue_number']
+    }
+  }
+];
+
+// 执行 GitHub API 操作
+async function executeFunction(name, args) {
+  const owner = args.owner || process.env.GITHUB_DEFAULT_OWNER;
+  const repo = args.repo || process.env.GITHUB_DEFAULT_REPO;
+
+  if (name === 'listIssues') {
+    const { data } = await octokit.rest.issues.listForRepo({ owner, repo, state: 'open' });
+    return data.map(i => `#${'$'}{i.number}: ${'$'}{i.title}`).join('\n') || '无 Open 状态的 Issue';
+  }
+  if (name === 'replyIssue') {
+    await octokit.rest.issues.createComment({ owner, repo, issue_number: args.issue_number, body: args.body });
+    return `成功在 Issue #${'$'}{args.issue_number} 下回复。`;
+  }
+  if (name === 'closeIssue') {
+    await octokit.rest.issues.update({ owner, repo, issue_number: args.issue_number, state: 'closed' });
+    return `成功关闭 Issue #${'$'}{args.issue_number}。`;
+  }
+  return '未知指令';
+}
+
+// 发送 WhatsApp 消息
+async function sendWhatsAppMessage(to, text) {
+  try {
+    await axios.post(
+      `https://graph.facebook.com/v20.0/${'$'}{process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        messaging_product: 'whatsapp',
+        to: to,
+        text: { body: text }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${'$'}{process.env.WHATSAPP_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  } catch (err) {
+    console.error('发送 WhatsApp 消息失败:', err.response?.data || err.message);
+  }
+}
+
+// 1. WhatsApp 接入验证 (Meta 初次配置时调用)
+app.get('/webhook/whatsapp', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+    res.status(200).send(challenge);
+  } else {
+    res.sendStatus(403);
+  }
+});
+
+// 2. 接收来自 WhatsApp 的消息 -> 交给 Gemini 处理 -> 执行 GitHub 操作或回复消息
+app.post('/webhook/whatsapp', async (req, res) => {
+  res.sendStatus(200);
+
+  const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  if (!message || message.type !== 'text') return;
+
+  const from = message.from;
+  const userPrompt = message.text.body;
+
+  try {
+    const model = 'gemini-2.5-flash';
+    let response = await ai.models.generateContent({
+      model,
+      contents: userPrompt,
+      config: {
+        systemInstruction: '你是一个精通 GitHub 项目管理的 AI 助手。用户通过 WhatsApp 下发指令。如需查改 GitHub 仓库，请主动使用工具函数。',
+        tools: [{ functionDeclarations: githubTools }]
+      }
+    });
+
+    // 如果模型决定发起 Function Calling
+    const functionCalls = response.functionCalls;
+    if (functionCalls && functionCalls.length > 0) {
+      for (const call of functionCalls) {
+        const result = await executeFunction(call.name, call.args);
+        
+        // 将结果回传给模型生成最终语言回复
+        response = await ai.models.generateContent({
+          model,
+          contents: [
+            { role: 'user', parts: [{ text: userPrompt }] },
+            { role: 'model', parts: [{ functionCall: call }] },
+            { role: 'user', parts: [{ functionResponse: { name: call.name, response: { output: result } } }] }
+          ]
+        });
+      }
+    }
+
+    const replyText = response.text || '操作已执行完成。';
+    await sendWhatsAppMessage(from, replyText);
+
+  } catch (err) {
+    console.error('处理 WhatsApp 消息出错:', err);
+    await sendWhatsAppMessage(from, '处理您的请求时出现异常。');
+  }
+});
+
+// 3. 接收来自 GitHub 的事件 (例如新 Issue) -> AI 总结 -> 推送到 WhatsApp
+app.post('/webhook/github', async (req, res) => {
+  res.sendStatus(200);
+  const event = req.headers['x-github-event'];
+  
+  if (event === 'issues' && req.body.action === 'opened') {
+    const issue = req.body.issue;
+    const prompt = `GitHub 收到新 Issue：\n标题：${'$'}{issue.title}\n内容：${'$'}{issue.body}\n请简短总结问题。`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt
+    });
+
+    const notifyText = `🔔 **GitHub 新 Issue 提醒 (#${'$'}{issue.number})**\n\n${'$'}{response.text}`;
+    await sendWhatsAppMessage(process.env.ADMIN_WHATSAPP_NUMBER, notifyText);
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 服务已成功启动！端口号: ${'$'}{PORT}`);
+});
+""".trimIndent()
+
+        val deployScript = """
+#!/bin/bash
+echo "📦 正在初始化 Gemini + GitHub + WhatsApp 自动化服务..."
+npm init -y
+npm install express dotenv @google/genai @octokit/rest axios
+echo "✅ 依赖安装完成！使用 'node server.js' 即可启动微服务。"
+""".trimIndent()
+
+        return mapOf(
+            ".env" to envContent,
+            "package.json" to packageJsonContent,
+            "server.js" to serverJsContent,
+            "setup.sh" to deployScript
+        )
+    }
+
     /**
      * 从 GitHub 链接/仓库/SKILL.md 提取并深度学习新技能，支持通过 Gemini 进行元结构语义提取
      */
@@ -557,6 +919,15 @@ class AgentRepository(private val context: Context) {
     fun getOfficeAgentsList(): List<com.example.data.api.OfficeAgent> {
         return listOf(
             com.example.data.api.OfficeAgent(
+                id = "agent_cto_new",
+                name = "Nexus CTO.new 架构师",
+                roleTitle = "自主全栈首席技术官 (免配置 API)",
+                avatarEmoji = "🏛️",
+                description = "具备端到端软件生命周期自主决策能力：架构选型、模块设计、技术评审、拆解 Sprint 与指导全栈落地。",
+                capabilities = listOf("全栈架构设计", "免配置自主引擎", "技术选型决策", "代码审查与重构", "Sprint 里程碑"),
+                defaultPromptTemplate = "作为 CTO.new 自主全栈首席技术官，请为项目【%REPO%】规划完整的技术架构演进方案与工程落地方案："
+            ),
+            com.example.data.api.OfficeAgent(
                 id = "agent_codex_dev",
                 name = "Codex 研发助理",
                 roleTitle = "GitHub 核心开发与 PR 审查员",
@@ -665,8 +1036,7 @@ class AgentRepository(private val context: Context) {
     }
 
     suspend fun updateSessionTitle(sessionId: String, title: String) {
-        val session = chatDao.getSessionById(sessionId) ?: return
-        chatDao.insertOrUpdateSession(session.copy(title = title, updatedAt = System.currentTimeMillis()))
+        chatDao.updateSessionTitle(sessionId, title)
     }
 
     // Skills
@@ -684,15 +1054,59 @@ class AgentRepository(private val context: Context) {
         }
     }
 
-    // Memories
+    // Memories & Long-term Context Retention
     fun getAllMemories(): Flow<List<AgentMemory>> = memoryDao.getAllMemories()
 
-    suspend fun addMemory(key: String, content: String, category: String = "custom") {
-        memoryDao.insertMemory(AgentMemory(key = key, content = content, category = category))
+    fun getMemoriesByCategory(category: String): Flow<List<AgentMemory>> = memoryDao.getMemoriesByCategory(category)
+
+    fun searchMemories(query: String): Flow<List<AgentMemory>> = memoryDao.searchMemories(query)
+
+    suspend fun addMemory(key: String, content: String, category: String = "custom", importance: Int = 1) {
+        val existing = memoryDao.getMemoryByKey(key)
+        if (existing != null) {
+            memoryDao.updateMemory(
+                existing.copy(
+                    content = content,
+                    category = category,
+                    importance = importance,
+                    lastAccessedAt = System.currentTimeMillis()
+                )
+            )
+        } else {
+            memoryDao.insertMemory(
+                AgentMemory(
+                    key = key,
+                    content = content,
+                    category = category,
+                    importance = importance,
+                    lastAccessedAt = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
+    suspend fun updateMemory(memory: AgentMemory) {
+        memoryDao.updateMemory(memory.copy(lastAccessedAt = System.currentTimeMillis()))
     }
 
     suspend fun deleteMemory(memory: AgentMemory) {
         memoryDao.deleteMemory(memory)
+    }
+
+    suspend fun deleteMemoryById(memoryId: Long) {
+        memoryDao.deleteMemoryById(memoryId)
+    }
+
+    suspend fun clearAllMemories() {
+        memoryDao.clearAllMemories()
+    }
+
+    // Chat History Search & Maintenance
+    fun searchChatMessages(query: String): Flow<List<ChatMessage>> = chatDao.searchMessages(query)
+
+    suspend fun deleteSessionById(sessionId: String) {
+        chatDao.deleteMessagesForSession(sessionId)
+        chatDao.deleteSessionById(sessionId)
     }
 
     // Chat Inference
@@ -702,13 +1116,6 @@ class AgentRepository(private val context: Context) {
         activeSkillId: String?
     ): Result<ChatMessage> = withContext(Dispatchers.IO) {
         try {
-            val apiKey = getApiKey()
-            if (apiKey.isBlank()) {
-                return@withContext Result.failure(
-                    IllegalStateException("未配置 Gemini API Key。请在右上方设置中填写您的免费 API Key！")
-                )
-            }
-
             // Save user message in DB
             val userMsg = ChatMessage(
                 sessionId = sessionId,
@@ -733,10 +1140,52 @@ class AgentRepository(private val context: Context) {
                 )
             }
 
+            val apiKey = getApiKey()
+            val skill = activeSkillId?.let { skillDao.getSkillById(it) }
+
+            // If API Key is not configured, seamlessly execute via CTO.new Autonomous Engine
+            if (apiKey.isBlank()) {
+                val assignedAgent = getOfficeAgentsList().find { it.id == activeSkillId }
+                val autonomousText = com.example.data.local.AutonomousEngineLocalPresets.generateAutonomousResponse(
+                    userPrompt = userPrompt,
+                    activeSkillId = activeSkillId,
+                    currentRepo = getDefaultGitHubRepo(),
+                    currentBranch = "main",
+                    assignedAgent = assignedAgent
+                )
+
+                val actionType = detectActionType(autonomousText, skill?.category)
+                val assistantMsg = ChatMessage(
+                    sessionId = sessionId,
+                    role = "model",
+                    content = autonomousText,
+                    timestamp = System.currentTimeMillis(),
+                    skillNameUsed = skill?.name ?: (assignedAgent?.name ?: "Nexus CTO.new"),
+                    actionType = actionType,
+                    tokenCount = 512
+                )
+                chatDao.insertMessage(assistantMsg)
+
+                if (activeSkillId != null) {
+                    incrementSkillPractice(activeSkillId, 40)
+                }
+
+                val updatedSession = chatDao.getSessionById(sessionId)
+                if (updatedSession != null) {
+                    chatDao.insertOrUpdateSession(
+                        updatedSession.copy(
+                            updatedAt = System.currentTimeMillis(),
+                            messageCount = updatedSession.messageCount + 1
+                        )
+                    )
+                }
+
+                return@withContext Result.success(assistantMsg)
+            }
+
             // Prepare history & context
             val history = chatDao.getMessagesListForSession(sessionId)
             val memories = memoryDao.getMemoriesList()
-            val skill = activeSkillId?.let { skillDao.getSkillById(it) }
 
             // Build System Instruction with Active Skill & Local Memory
             val memoryContext = if (memories.isNotEmpty()) {

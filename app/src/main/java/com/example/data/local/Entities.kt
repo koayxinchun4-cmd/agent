@@ -2,9 +2,6 @@ package com.example.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import androidx.room.TypeConverter
-import androidx.room.TypeConverters
-import java.util.Date
 
 @Entity(tableName = "sessions")
 data class ChatSession(
@@ -14,7 +11,9 @@ data class ChatSession(
     val updatedAt: Long = System.currentTimeMillis(),
     val activeSkillId: String? = null,
     val systemPrompt: String? = null,
-    val messageCount: Int = 0
+    val messageCount: Int = 0,
+    val summary: String? = null,
+    val isArchived: Boolean = false
 )
 
 @Entity(tableName = "messages")
@@ -48,6 +47,8 @@ data class AgentMemory(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val key: String,
     val content: String,
-    val category: String = "general", // "preference", "device", "user_profile", "custom"
+    val category: String = "general", // "preference", "device", "user_profile", "project", "custom"
+    val importance: Int = 1, // 1 to 5 for context retrieval weighting
+    val lastAccessedAt: Long = System.currentTimeMillis(),
     val createdAt: Long = System.currentTimeMillis()
 )

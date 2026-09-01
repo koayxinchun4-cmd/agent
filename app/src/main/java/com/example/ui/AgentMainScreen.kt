@@ -265,9 +265,9 @@ fun AgentMainScreen(
                                 )
                             }
                             Text(
-                                text = if (apiKey.isNotBlank()) "引擎: $selectedModel" else "⚠️ 请配置 API Key",
+                                text = if (apiKey.isNotBlank()) "引擎: $selectedModel" else "🏛️ CTO.new 自主工程引擎 (免配置)",
                                 fontSize = 11.sp,
-                                color = if (apiKey.isNotBlank()) Cyan80 else Color(0xFFFBBF24)
+                                color = if (apiKey.isNotBlank()) Cyan80 else Color(0xFF6EE7B7)
                             )
                         }
                     },
@@ -632,7 +632,7 @@ fun AgentMainScreen(
                     OutlinedTextField(
                         value = inputText,
                         onValueChange = { inputText = it },
-                        placeholder = { Text("向 Nexus 提问、按麦克风语音输入或指派 GitHub 任务...", fontSize = 13.sp, color = Color(0xFF64748B)) },
+                        placeholder = { Text("向 Nexus 提问、按麦克风语音输入或发起 GitHub 协同...", fontSize = 13.sp, color = Color(0xFF64748B)) },
                         modifier = Modifier
                             .weight(1f)
                             .testTag("chat_input_field"),
@@ -856,6 +856,8 @@ fun AgentMainScreen(
         SettingsSheet(
             currentApiKey = apiKey,
             selectedModel = selectedModel,
+            githubUserProfile = githubUserProfile,
+            githubRepo = githubRepo,
             onSaveApiKey = { key ->
                 viewModel.saveApiKey(key)
                 Toast.makeText(context, "API Key Saved", Toast.LENGTH_SHORT).show()
@@ -867,6 +869,15 @@ fun AgentMainScreen(
                 viewModel.exportCurrentChatToZip { zipFile ->
                     IntentHelper.shareZipFile(context, zipFile)
                 }
+            },
+            onOpenGitHubStudio = {
+                showSettingsSheet = false
+                showOfficeStudioSheet = true
+            },
+            onStartGitHubOAuth = {
+                showSettingsSheet = false
+                showOfficeStudioSheet = true
+                viewModel.startGitHubDeviceFlow()
             },
             onDismiss = { showSettingsSheet = false }
         )

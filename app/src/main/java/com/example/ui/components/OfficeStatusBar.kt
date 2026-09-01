@@ -378,7 +378,7 @@ fun OfficeStatusBar(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(agent.avatarEmoji, fontSize = 20.sp)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("指派任务给 ${agent.name}", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("与 ${agent.name} 开启协同", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             },
             text = {
@@ -599,7 +599,7 @@ private fun AgentExpandedRow(
                 ) {
                     Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(11.dp))
                     Spacer(modifier = Modifier.width(3.dp))
-                    Text("指派指令", color = CyanPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text("开启协同", color = CyanPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -746,7 +746,7 @@ private fun AgentActivityDetailDialog(
                 OutlinedTextField(
                     value = taskInput,
                     onValueChange = { taskInput = it },
-                    label = { Text("协同指令 (支持即时指派)", fontSize = 11.sp) },
+                    label = { Text("协同指令 (即时联动)", fontSize = 11.sp) },
                     minLines = 2,
                     maxLines = 4,
                     modifier = Modifier.fillMaxWidth(),
@@ -784,7 +784,7 @@ private fun AgentActivityDetailDialog(
                 ) {
                     Icon(Icons.Default.RocketLaunch, contentDescription = null, tint = Color.Black, modifier = Modifier.size(13.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("指派执行", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Text("开启协同", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                 }
             }
         },

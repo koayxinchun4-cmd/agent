@@ -11,6 +11,7 @@ import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Headers
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -52,6 +53,24 @@ interface GitHubApiService {
         @Path("owner") owner: String,
         @Path("repo") repo: String,
         @Body request: GitHubCreateIssueRequest,
+        @Header("Authorization") token: String
+    ): Response<GitHubIssue>
+
+    @POST("repos/{owner}/{repo}/issues/{issue_number}/comments")
+    suspend fun createIssueComment(
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Path("issue_number") issueNumber: Int,
+        @Body request: GitHubIssueCommentRequest,
+        @Header("Authorization") token: String
+    ): Response<GitHubCommentResponse>
+
+    @PATCH("repos/{owner}/{repo}/issues/{issue_number}")
+    suspend fun updateIssue(
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Path("issue_number") issueNumber: Int,
+        @Body request: GitHubUpdateIssueRequest,
         @Header("Authorization") token: String
     ): Response<GitHubIssue>
 

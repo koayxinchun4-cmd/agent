@@ -30,6 +30,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "nexus_agent_db"
                 )
+                .fallbackToDestructiveMigration()
                 .addCallback(DatabaseCallback())
                 .build()
                 INSTANCE = instance

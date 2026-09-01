@@ -58,6 +58,7 @@ import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -152,6 +153,211 @@ fun OfficeAgentStudioSheet(
 
     var selectedAgentForCustomTask by remember { mutableStateOf<OfficeAgent?>(null) }
     var customTaskPrompt by remember { mutableStateOf("") }
+
+    // CI/CD Workflow Studio States
+    var selectedCiPresetIndex by remember { mutableIntStateOf(0) }
+    var ciTriggerBranches by remember { mutableStateOf("main, master") }
+    var ciIncludePrTrigger by remember { mutableStateOf(true) }
+    var ciIncludeManualTrigger by remember { mutableStateOf(true) }
+    var ciJdkVersion by remember { mutableStateOf("17") }
+    var ciWorkflowPath by remember { mutableStateOf(".github/workflows/android-ci.yml") }
+    var ciCommitMessage by remember { mutableStateOf("ci: setup automated GitHub Actions workflow by Nexus Agent") }
+    var lastCiActionResult by remember { mutableStateOf<String?>(null) }
+
+    fun generateWorkflowYaml(presetIndex: Int, branchesStr: String, includePr: Boolean, includeManual: Boolean, jdk: String): String {
+        val branchList = branchesStr.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        val branchFormatted = if (branchList.isEmpty()) "[ main ]" else "[ " + branchList.joinToString(", ") + " ]"
+        
+        return when (presetIndex) {
+            0 -> """
+# Android CI/CD Pipeline - Automated Build & Test
+name: Android CI
+
+on:
+  push:
+    branches: $branchFormatted
+${if (includePr) "  pull_request:\n    branches: $branchFormatted" else ""}
+${if (includeManual) "  workflow_dispatch:" else ""}
+
+jobs:
+  build:
+    name: Build & Verify APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK $jdk
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '$jdk'
+          cache: 'gradle'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Run Unit & JVM Robolectric Tests
+        run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Build Debug APK
+        run: gradle :app:assembleDebug --no-daemon
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 7
+""".trimIndent()
+            1 -> """
+# Roborazzi UI Screenshot & Regression Verification
+name: Roborazzi UI Tests
+
+on:
+  push:
+    branches: $branchFormatted
+${if (includePr) "  pull_request:\n    branches: $branchFormatted" else ""}
+${if (includeManual) "  workflow_dispatch:" else ""}
+
+jobs:
+  screenshot-test:
+    name: Verify Screenshot Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK $jdk
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '$jdk'
+          cache: 'gradle'
+
+      - name: Setup Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Run Roborazzi Screenshot Verification
+        run: gradle :app:verifyRoborazziDebug --no-daemon
+
+      - name: Upload Roborazzi Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: roborazzi-reports
+          path: app/build/reports/roborazzi/
+          retention-days: 14
+""".trimIndent()
+            2 -> """
+# Release AAB & Production Package Pipeline
+name: Release Package Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+${if (includeManual) "  workflow_dispatch:" else ""}
+
+jobs:
+  release-bundle:
+    name: Build Signed Release Bundle (AAB)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK $jdk
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '$jdk'
+          cache: 'gradle'
+
+      - name: Setup Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Decode Keystore (Optional Secrets)
+        if: env.KEYSTORE_BASE64 != ''
+        env:
+          KEYSTORE_BASE64: ${'$'}{{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "${'$'}KEYSTORE_BASE64" | base64 --decode > app/release.keystore
+
+      - name: Build Android App Bundle (AAB)
+        run: gradle :app:bundleRelease --no-daemon
+
+      - name: Upload Release Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle-aab
+          path: app/build/outputs/bundle/release/*.aab
+""".trimIndent()
+            else -> """
+# Code Quality & Static Analysis Gate
+name: Code Quality Gate
+
+on:
+  push:
+    branches: $branchFormatted
+${if (includePr) "  pull_request:\n    branches: $branchFormatted" else ""}
+${if (includeManual) "  workflow_dispatch:" else ""}
+
+jobs:
+  lint-gate:
+    name: Gradle Lint & Static Inspection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK $jdk
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '$jdk'
+          cache: 'gradle'
+
+      - name: Setup Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Run Gradle Lint
+        run: gradle :app:lintDebug --no-daemon
+
+      - name: Upload Lint Inspection Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-results
+          path: app/build/reports/lint-results*.html
+""".trimIndent()
+        }
+    }
+
+    var ciCustomYaml by remember {
+        mutableStateOf(generateWorkflowYaml(0, "main, master", true, true, "17"))
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -302,7 +508,7 @@ fun OfficeAgentStudioSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Navigation Tabs (4 Tabs)
+            // Navigation Tabs (5 Tabs)
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.Transparent,
@@ -313,21 +519,26 @@ fun OfficeAgentStudioSheet(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("智能体矩阵 (${officeAgents.size})", fontWeight = FontWeight.SemiBold, fontSize = 11.sp) }
+                    text = { Text("智能体协同 (${officeAgents.size})", fontWeight = FontWeight.SemiBold, fontSize = 11.sp) }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("⚡ 自动化 Commit & Push", fontWeight = FontWeight.SemiBold, fontSize = 11.sp) }
+                    text = { Text("⚡ 自动化 Commit & PR", fontWeight = FontWeight.SemiBold, fontSize = 11.sp) }
                 )
                 Tab(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    text = { Text("仓库 Issues (${issues.size})", fontWeight = FontWeight.SemiBold, fontSize = 11.sp) }
+                    text = { Text("🛠️ CI/CD 流水线配置", fontWeight = FontWeight.SemiBold, fontSize = 11.sp) }
                 )
                 Tab(
                     selected = selectedTab == 3,
                     onClick = { selectedTab = 3 },
+                    text = { Text("仓库 Issues (${issues.size})", fontWeight = FontWeight.SemiBold, fontSize = 11.sp) }
+                )
+                Tab(
+                    selected = selectedTab == 4,
+                    onClick = { selectedTab = 4 },
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("🔑 OAuth & 账号", fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
@@ -663,8 +874,234 @@ fun OfficeAgentStudioSheet(
                 }
             }
 
-            // Tab 2: Repo Issues View
+            // Tab 2: CI/CD Workflow Studio & Direct GitHub Actions Injection
             if (selectedTab == 2) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    item {
+                        Surface(
+                            color = Slate800,
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("⚙️", fontSize = 18.sp)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("CI/CD 流水线模版与一键集成", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                    Surface(color = CyanPrimary.copy(alpha = 0.15f), shape = RoundedCornerShape(6.dp)) {
+                                        Text("GitHub Actions", color = CyanPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                    }
+                                }
+
+                                Text(
+                                    text = "选择适合项目的 GitHub Actions 自动化流水线模板，自定义触发规则，可一键直连提交至当前关联仓库的 .github/workflows/ 目录。",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF94A3B8),
+                                    lineHeight = 15.sp
+                                )
+
+                                // Preset selector
+                                Text("选择流水线模版：", fontSize = 11.sp, color = Color(0xFFCBD5E1), fontWeight = FontWeight.SemiBold)
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    val presets = listOf(
+                                        "📱 Android 构建与测试",
+                                        "🧪 Roborazzi 快照验证",
+                                        "📦 Release AAB 打包",
+                                        "🔍 Lint 代码门禁"
+                                    )
+                                    val workflowPaths = listOf(
+                                        ".github/workflows/android-ci.yml",
+                                        ".github/workflows/roborazzi-test.yml",
+                                        ".github/workflows/release-build.yml",
+                                        ".github/workflows/code-quality.yml"
+                                    )
+
+                                    presets.forEachIndexed { index, name ->
+                                        val isSelected = selectedCiPresetIndex == index
+                                        Surface(
+                                            color = if (isSelected) CyanPrimary else Color(0xFF0F172A),
+                                            shape = RoundedCornerShape(8.dp),
+                                            border = BorderStroke(1.dp, if (isSelected) CyanPrimary else Color(0xFF334155)),
+                                            modifier = Modifier.clickable {
+                                                selectedCiPresetIndex = index
+                                                ciWorkflowPath = workflowPaths[index]
+                                                ciCustomYaml = generateWorkflowYaml(index, ciTriggerBranches, ciIncludePrTrigger, ciIncludeManualTrigger, ciJdkVersion)
+                                            }
+                                        ) {
+                                            Text(
+                                                text = name,
+                                                color = if (isSelected) Color.Black else Color(0xFFE2E8F0),
+                                                fontSize = 10.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Configuration Parameters
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = ciTriggerBranches,
+                                        onValueChange = {
+                                            ciTriggerBranches = it
+                                            ciCustomYaml = generateWorkflowYaml(selectedCiPresetIndex, it, ciIncludePrTrigger, ciIncludeManualTrigger, ciJdkVersion)
+                                        },
+                                        label = { Text("触发分支 (逗号分隔)", fontSize = 10.sp) },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1.3f),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = CyanPrimary,
+                                            unfocusedBorderColor = Color(0xFF334155),
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White
+                                        )
+                                    )
+
+                                    OutlinedTextField(
+                                        value = ciJdkVersion,
+                                        onValueChange = {
+                                            ciJdkVersion = it
+                                            ciCustomYaml = generateWorkflowYaml(selectedCiPresetIndex, ciTriggerBranches, ciIncludePrTrigger, ciIncludeManualTrigger, it)
+                                        },
+                                        label = { Text("JDK 版本", fontSize = 10.sp) },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(0.7f),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = CyanPrimary,
+                                            unfocusedBorderColor = Color(0xFF334155),
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White
+                                        )
+                                    )
+                                }
+
+                                OutlinedTextField(
+                                    value = ciWorkflowPath,
+                                    onValueChange = { ciWorkflowPath = it },
+                                    label = { Text("目标文件路径", fontSize = 10.sp) },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = CyanPrimary,
+                                        unfocusedBorderColor = Color(0xFF334155),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    )
+                                )
+
+                                // Live YAML Editor
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("工作流 YAML 实时预览与微调：", fontSize = 11.sp, color = Color(0xFF94A3B8))
+                                        TextButton(
+                                            onClick = {
+                                                clipboardManager.setText(AnnotatedString(ciCustomYaml))
+                                                android.widget.Toast.makeText(context, "工作流 YAML 已复制到剪贴板", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.ContentCopy, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(13.dp))
+                                            Spacer(modifier = Modifier.width(3.dp))
+                                            Text("复制 YAML", color = CyanPrimary, fontSize = 11.sp)
+                                        }
+                                    }
+
+                                    OutlinedTextField(
+                                        value = ciCustomYaml,
+                                        onValueChange = { ciCustomYaml = it },
+                                        minLines = 8,
+                                        maxLines = 14,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 10.sp, lineHeight = 14.sp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = CyanPrimary,
+                                            unfocusedBorderColor = Color(0xFF334155),
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color(0xFFE2E8F0),
+                                            focusedContainerColor = Color(0xFF070B13),
+                                            unfocusedContainerColor = Color(0xFF070B13)
+                                        )
+                                    )
+                                }
+
+                                OutlinedTextField(
+                                    value = ciCommitMessage,
+                                    onValueChange = { ciCommitMessage = it },
+                                    label = { Text("提交 Commit 信息", fontSize = 10.sp) },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = CyanPrimary,
+                                        unfocusedBorderColor = Color(0xFF334155),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    )
+                                )
+
+                                Button(
+                                    onClick = {
+                                        val targetBranch = repoDetails?.defaultBranch ?: "main"
+                                        onCommitAndPush(ciWorkflowPath, ciCustomYaml, ciCommitMessage, targetBranch) { success, msg ->
+                                            lastCiActionResult = msg
+                                        }
+                                    },
+                                    enabled = !isGitHubLoading && ciWorkflowPath.isNotBlank() && ciCustomYaml.isNotBlank(),
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
+                                    modifier = Modifier.fillMaxWidth().testTag("deploy_cicd_workflow_btn")
+                                ) {
+                                    if (isGitHubLoading) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
+                                    } else {
+                                        Icon(Icons.Default.RocketLaunch, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("⚡ 一键部署 CI/CD 流水线至当前仓库", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                if (lastCiActionResult != null) {
+                                    Surface(
+                                        color = Color(0xFF0F172A),
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(0.5.dp, Color(0xFF334155)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            text = "部署反馈：${lastCiActionResult}",
+                                            color = if (lastCiActionResult?.contains("成功") == true) Color(0xFF6EE7B7) else Color(0xFFFCA5A5),
+                                            fontSize = 11.sp,
+                                            modifier = Modifier.padding(8.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Tab 3: Repo Issues View
+            if (selectedTab == 3) {
                 if (issues.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxWidth().weight(1f),
@@ -745,7 +1182,7 @@ fun OfficeAgentStudioSheet(
                                         ) {
                                             Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.Black, modifier = Modifier.size(12.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("指派 Issue 巡检官修复", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text("联动 Issue 巡检官排查", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }
@@ -755,8 +1192,8 @@ fun OfficeAgentStudioSheet(
                 }
             }
 
-            // Tab 3: GitHub OAuth Authentication & Account Binding
-            if (selectedTab == 3) {
+            // Tab 4: GitHub OAuth Authentication & Account Binding
+            if (selectedTab == 4) {
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -1115,7 +1552,7 @@ fun OfficeAgentStudioSheet(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "指派任务给：${selectedAgentForCustomTask?.avatarEmoji} ${selectedAgentForCustomTask?.name}",
+                                text = "协同专家：${selectedAgentForCustomTask?.avatarEmoji} ${selectedAgentForCustomTask?.name}",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = CyanPrimary
@@ -1272,7 +1709,7 @@ fun OfficeAgentCard(
                 ) {
                     Icon(Icons.Default.RocketLaunch, contentDescription = null, tint = Color.Black, modifier = Modifier.size(13.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("派发 GitHub 任务", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("开启协同任务", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

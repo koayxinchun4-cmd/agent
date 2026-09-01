@@ -140,6 +140,28 @@ data class GitHubPullRequest(
     val user: GitHubOwner? = null
 )
 
+@JsonClass(generateAdapter = true)
+data class GitHubIssueCommentRequest(
+    val body: String
+)
+
+@JsonClass(generateAdapter = true)
+data class GitHubUpdateIssueRequest(
+    val state: String? = null,
+    val title: String? = null,
+    val body: String? = null,
+    val labels: List<String>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class GitHubCommentResponse(
+    val id: Long = 0,
+    val body: String = "",
+    @Json(name = "html_url") val htmlUrl: String = "",
+    @Json(name = "created_at") val createdAt: String = "",
+    val user: GitHubOwner? = null
+)
+
 data class OfficeAgent(
     val id: String,
     val name: String,

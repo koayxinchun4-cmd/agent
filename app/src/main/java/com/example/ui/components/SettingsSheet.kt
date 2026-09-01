@@ -58,6 +58,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.OpenInBrowser
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Build
+import com.example.data.api.GitHubUserProfile
 import com.example.ui.theme.Cyan80
 import com.example.ui.theme.CyanPrimary
 import com.example.ui.theme.DarkSurface
@@ -69,9 +76,13 @@ import com.example.ui.theme.EmeraldGreen
 fun SettingsSheet(
     currentApiKey: String,
     selectedModel: String,
+    githubUserProfile: GitHubUserProfile? = null,
+    githubRepo: String = "google/mesop",
     onSaveApiKey: (String) -> Unit,
     onSelectModel: (String) -> Unit,
     onExportZip: () -> Unit,
+    onOpenGitHubStudio: () -> Unit = {},
+    onStartGitHubOAuth: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -104,7 +115,7 @@ fun SettingsSheet(
                         color = Color.White
                     )
                     Text(
-                        text = "配置 Google Gemini 免费 API Key 与运行模式",
+                        text = "配置 Google Gemini API、GitHub OAuth 与 CI/CD",
                         fontSize = 12.sp,
                         color = Color(0xFF94A3B8)
                     )
@@ -136,6 +147,119 @@ fun SettingsSheet(
                 }
             }
 
+            // GitHub OAuth & CI/CD Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF111726)),
+                border = BorderStroke(1.dp, if (githubUserProfile != null) EmeraldGreen.copy(alpha = 0.4f) else Color(0xFF222F46))
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🐙", fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("GitHub OAuth 与 CI/CD 工作流", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                        }
+
+                        if (githubUserProfile != null) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = EmeraldGreen.copy(alpha = 0.15f),
+                                border = BorderStroke(0.5.dp, EmeraldGreen)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(EmeraldGreen))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("@${githubUserProfile.login}", fontSize = 10.sp, color = EmeraldGreen, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = if (githubUserProfile != null)
+                            "已成功绑定 GitHub 账号。Agent 具备自动化 Commit/Push、创建 PR 以及向目标仓库注入 CI/CD 工作流的权限。"
+                        else
+                            "通过 GitHub OAuth 官方协议授权后，智能体将具备向仓库执行 Commit、推送代码及自动部署 GitHub Actions CI/CD 流水线的能力。",
+                        fontSize = 12.sp,
+                        color = Color(0xFF94A3B8),
+                        lineHeight = 16.sp
+                    )
+
+                    Surface(
+                        color = Color(0xFF0B101B),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("当前目标仓库", fontSize = 10.sp, color = Color(0xFF64748B))
+                                Text(githubRepo, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = CyanPrimary, fontFamily = FontFamily.Monospace)
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFF1E293B)
+                            ) {
+                                Text(
+                                    text = if (githubUserProfile != null) "OAuth Token 活跃" else "未认证",
+                                    fontSize = 10.sp,
+                                    color = if (githubUserProfile != null) Color(0xFF6EE7B7) else Color(0xFFFBBF24),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (githubUserProfile == null) {
+                            Button(
+                                onClick = {
+                                    onDismiss()
+                                    onStartGitHubOAuth()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
+                                modifier = Modifier.weight(1f).testTag("settings_start_oauth_btn")
+                            ) {
+                                Icon(Icons.Default.LockOpen, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("开启 GitHub OAuth", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                onDismiss()
+                                onOpenGitHubStudio()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = if (githubUserProfile != null) CyanPrimary else Color(0xFF1E293B)),
+                            border = if (githubUserProfile == null) BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.5f)) else null,
+                            modifier = Modifier.weight(1f).testTag("settings_open_cicd_studio_btn")
+                        ) {
+                            Icon(Icons.Default.Build, contentDescription = null, tint = if (githubUserProfile != null) Color.Black else Cyan80, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("CI/CD & 智能体工坊", color = if (githubUserProfile != null) Color.Black else Cyan80, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
             // Gemini API Key Input Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -151,9 +275,9 @@ fun SettingsSheet(
                     }
 
                     Text(
-                        text = "从 Google AI Studio 获取的免费 API Key 可在手机上直接运行，无需 Root 权限。密钥将安全保存在手机本地 SharedPreferences 中。",
+                        text = "💡 选填项目：本应用内置免配置的「CTO.new 自主全栈软件工程师引擎」，即使不填写 API Key 亦可完全自主运行。若需接入 Google 官方实时 Gemini 大模型，可在此填入 AI Studio 免费 Key。",
                         fontSize = 12.sp,
-                        color = Color(0xFF94A3B8),
+                        color = Color(0xFF6EE7B7),
                         lineHeight = 16.sp
                     )
 

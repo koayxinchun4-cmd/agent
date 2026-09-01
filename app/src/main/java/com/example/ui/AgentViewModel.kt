@@ -1390,7 +1390,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         } ?: "\n[GitHub 授权状态]: 匿名模式 (建议在工坊中绑定 GitHub OAuth 以允许 Agent 执行自动 Commit/Push)\n"
 
         val formattedPrompt = """
-            【办公室协同作业指令 - 指派给：${agent.name}（${agent.roleTitle}）】
+            【办公室智能体协同作业 - 专家：${agent.name}（${agent.roleTitle}）】
             $repoContext$authContext
             【任务内容】：
             $taskPrompt
