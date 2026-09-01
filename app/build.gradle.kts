@@ -102,6 +102,7 @@ dependencies {
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
   implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+  implementation("com.squareup.retrofit2:converter-gson:2.9.0")
   // Uncomment to use Firestore:
   // implementation(libs.firebase.firestore)
 
