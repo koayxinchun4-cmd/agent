@@ -1,0 +1,28 @@
+name: Aider AI Code Assistant
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  aider:
+    name: Run Aider
+    if: ${{ contains(github.event.comment.body, '@aider') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: aider-chat-action
+        uses: mirrajabi/aider-github-action@v1.1.0
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        with:
+          auto_commit: true
