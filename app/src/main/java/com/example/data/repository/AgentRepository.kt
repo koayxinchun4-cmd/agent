@@ -70,7 +70,7 @@ class AgentRepository(private val context: Context) {
     fun getWhatsAppPhoneId(): String = prefs.getString(PREF_WHATSAPP_PHONE_ID, "") ?: ""
     fun setWhatsAppPhoneId(id: String) = prefs.edit().putString(PREF_WHATSAPP_PHONE_ID, id.trim()).apply()
 
-    fun getWhatsAppVerifyToken(): String = prefs.getString(PREF_WHATSAPP_VERIFY_TOKEN, "my_custom_verify_token_123") ?: "my_custom_verify_token_123"
+    fun getWhatsAppVerifyToken(): String = prefs.getString(PREF_WHATSAPP_VERIFY_TOKEN, "") ?: ""
     fun setWhatsAppVerifyToken(token: String) = prefs.edit().putString(PREF_WHATSAPP_VERIFY_TOKEN, token.trim()).apply()
 
     fun getAdminWhatsAppNumber(): String = prefs.getString(PREF_ADMIN_WHATSAPP_NUMBER, "") ?: ""
@@ -161,40 +161,29 @@ class AgentRepository(private val context: Context) {
                 }
                 Result.success(body)
             } else {
-                Result.failure(Exception("轮询 OAuth Token 失败: ${response.code()} ${response.message()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun exchangeOAuthWebCode(clientId: String, clientSecret: String, code: String): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val response = com.example.data.api.GitHubApiClient.oauthService.exchangeWebCode(
-                clientId = clientId,
-                clientSecret = clientSecret,
-                code = code,
-                redirectUri = "nexus://github-callback"
-            )
-            if (response.isSuccessful && response.body() != null) {
-                val token = response.body()?.accessToken
-                if (!token.isNullOrBlank()) {
-                    setGitHubToken(token)
-                    Result.success(token)
-                } else {
-                    Result.failure(Exception(response.body()?.errorDescription ?: "未获取到 Access Token"))
+                // GitHub returns authorization_pending / slow_down / expired_token /
+                // access_denied as JSON bodies with HTTP 400. Parse them so the
+                // polling loop can react instead of silently swallowing each cycle.
+                val errorJson = try {
+                    response.errorBody()?.string()?.let { org.json.JSONObject(it) }
+                } catch (e: Exception) {
+                    null
                 }
-            } else {
-                Result.failure(Exception("OAuth Web Code 换取 Token 失败: ${response.code()} ${response.message()}"))
+                val errorCode = errorJson?.optString("error")?.ifBlank { null }
+                if (errorCode != null) {
+                    Result.success(
+                        com.example.data.api.GitHubOAuthTokenResponse(
+                            error = errorCode,
+                            errorDescription = errorJson.optString("error_description").ifBlank { null }
+                        )
+                    )
+                } else {
+                    Result.failure(Exception("轮询 OAuth Token 失败: ${response.code()} ${response.message()}"))
+                }
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
-
-    fun getOAuthAuthorizeUrl(clientId: String? = null): String {
-        val cid = clientId?.ifBlank { null } ?: getGitHubClientId().ifBlank { DEFAULT_GITHUB_CLIENT_ID }
-        return "https://github.com/login/oauth/authorize?client_id=$cid&scope=repo,workflow,read:user,user:email&redirect_uri=nexus://github-callback"
     }
 
     suspend fun fetchCurrentUserProfile(): Result<com.example.data.api.GitHubUserProfile> = withContext(Dispatchers.IO) {
@@ -492,252 +481,17 @@ class AgentRepository(private val context: Context) {
         }
     }
 
-    fun generateWhatsAppMicroserviceFiles(
-        geminiApiKey: String,
-        githubToken: String,
-        owner: String,
-        repo: String,
-        whatsappToken: String,
-        phoneNumberId: String,
-        verifyToken: String,
-        adminNumber: String
-    ): Map<String, String> {
-        val envContent = """
-PORT=3000
-
-# Google AI Studio API Key (https://aistudio.google.com/app/apikey)
-GEMINI_API_KEY=${if (geminiApiKey.isNotBlank()) geminiApiKey else "your_gemini_api_key_here"}
-
-# GitHub 配置 (Personal Access Token 或 OAuth Token)
-GITHUB_TOKEN=${if (githubToken.isNotBlank()) githubToken else "your_github_personal_access_token_here"}
-GITHUB_DEFAULT_OWNER=$owner
-GITHUB_DEFAULT_REPO=$repo
-
-# WhatsApp Business Cloud API 配置 (Meta for Developers)
-WHATSAPP_TOKEN=${if (whatsappToken.isNotBlank()) whatsappToken else "your_whatsapp_access_token_here"}
-WHATSAPP_PHONE_NUMBER_ID=${if (phoneNumberId.isNotBlank()) phoneNumberId else "your_whatsapp_phone_number_id_here"}
-WHATSAPP_VERIFY_TOKEN=$verifyToken
-ADMIN_WHATSAPP_NUMBER=${if (adminNumber.isNotBlank()) adminNumber else "60123456789"}
-""".trimIndent()
-
-        val packageJsonContent = """
-{
-  "name": "gemini-github-whatsapp",
-  "version": "1.0.0",
-  "description": "Nexus AI Agent - Gemini + GitHub + WhatsApp Automation Bridge",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
-  },
-  "dependencies": {
-    "@google/genai": "^0.1.1",
-    "@octokit/rest": "^21.1.1",
-    "axios": "^1.7.9",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2"
-  }
-}
-""".trimIndent()
-
-        val serverJsContent = """
-require('dotenv').config();
-const express = require('express');
-const { GoogleGenAI } = require('@google/genai');
-const { Octokit } = require('@octokit/rest');
-const axios = require('axios');
-
-const app = express();
-app.use(express.json());
-
-// 初始化 API 客户端
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-
-// 定义 Gemini 在 Google AI Studio 中使用的工具 (Function Calling)
-const githubTools = [
-  {
-    name: 'listIssues',
-    description: '获取 GitHub 仓库当前的 Issue 列表',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        owner: { type: 'STRING', description: '仓库拥有者' },
-        repo: { type: 'STRING', description: '仓库名' }
-      }
-    }
-  },
-  {
-    name: 'replyIssue',
-    description: '在指定的 GitHub Issue 下发表评论回复',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        owner: { type: 'STRING', description: '仓库拥有者' },
-        repo: { type: 'STRING', description: '仓库名' },
-        issue_number: { type: 'NUMBER', description: 'Issue 编号' },
-        body: { type: 'STRING', description: '回复内容' }
-      },
-      required: ['issue_number', 'body']
-    }
-  },
-  {
-    name: 'closeIssue',
-    description: '关闭指定的 GitHub Issue',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        owner: { type: 'STRING', description: '仓库拥有者' },
-        repo: { type: 'STRING', description: '仓库名' },
-        issue_number: { type: 'NUMBER', description: 'Issue 编号' }
-      },
-      required: ['issue_number']
-    }
-  }
-];
-
-// 执行 GitHub API 操作
-async function executeFunction(name, args) {
-  const owner = args.owner || process.env.GITHUB_DEFAULT_OWNER;
-  const repo = args.repo || process.env.GITHUB_DEFAULT_REPO;
-
-  if (name === 'listIssues') {
-    const { data } = await octokit.rest.issues.listForRepo({ owner, repo, state: 'open' });
-    return data.map(i => `#${'$'}{i.number}: ${'$'}{i.title}`).join('\n') || '无 Open 状态的 Issue';
-  }
-  if (name === 'replyIssue') {
-    await octokit.rest.issues.createComment({ owner, repo, issue_number: args.issue_number, body: args.body });
-    return `成功在 Issue #${'$'}{args.issue_number} 下回复。`;
-  }
-  if (name === 'closeIssue') {
-    await octokit.rest.issues.update({ owner, repo, issue_number: args.issue_number, state: 'closed' });
-    return `成功关闭 Issue #${'$'}{args.issue_number}。`;
-  }
-  return '未知指令';
-}
-
-// 发送 WhatsApp 消息
-async function sendWhatsAppMessage(to, text) {
-  try {
-    await axios.post(
-      `https://graph.facebook.com/v20.0/${'$'}{process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-      {
-        messaging_product: 'whatsapp',
-        to: to,
-        text: { body: text }
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${'$'}{process.env.WHATSAPP_TOKEN}`,
-          'Content-Type': 'application/json'
+    /**
+     * H7 guard: the GitHub token must never be attached to user-supplied URLs
+     * pointing at third-party hosts (token exfiltration risk).
+     */
+    private fun isTrustedGitHubUrl(url: String): Boolean {
+        return try {
+            val host = java.net.URI(url).host?.lowercase()
+            host == "github.com" || host == "raw.githubusercontent.com" || host == "api.github.com"
+        } catch (e: Exception) {
+            false
         }
-      }
-    );
-  } catch (err) {
-    console.error('发送 WhatsApp 消息失败:', err.response?.data || err.message);
-  }
-}
-
-// 1. WhatsApp 接入验证 (Meta 初次配置时调用)
-app.get('/webhook/whatsapp', (req, res) => {
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
-
-  if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-    res.status(200).send(challenge);
-  } else {
-    res.sendStatus(403);
-  }
-});
-
-// 2. 接收来自 WhatsApp 的消息 -> 交给 Gemini 处理 -> 执行 GitHub 操作或回复消息
-app.post('/webhook/whatsapp', async (req, res) => {
-  res.sendStatus(200);
-
-  const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-  if (!message || message.type !== 'text') return;
-
-  const from = message.from;
-  const userPrompt = message.text.body;
-
-  try {
-    const model = 'gemini-2.5-flash';
-    let response = await ai.models.generateContent({
-      model,
-      contents: userPrompt,
-      config: {
-        systemInstruction: '你是一个精通 GitHub 项目管理的 AI 助手。用户通过 WhatsApp 下发指令。如需查改 GitHub 仓库，请主动使用工具函数。',
-        tools: [{ functionDeclarations: githubTools }]
-      }
-    });
-
-    // 如果模型决定发起 Function Calling
-    const functionCalls = response.functionCalls;
-    if (functionCalls && functionCalls.length > 0) {
-      for (const call of functionCalls) {
-        const result = await executeFunction(call.name, call.args);
-        
-        // 将结果回传给模型生成最终语言回复
-        response = await ai.models.generateContent({
-          model,
-          contents: [
-            { role: 'user', parts: [{ text: userPrompt }] },
-            { role: 'model', parts: [{ functionCall: call }] },
-            { role: 'user', parts: [{ functionResponse: { name: call.name, response: { output: result } } }] }
-          ]
-        });
-      }
-    }
-
-    const replyText = response.text || '操作已执行完成。';
-    await sendWhatsAppMessage(from, replyText);
-
-  } catch (err) {
-    console.error('处理 WhatsApp 消息出错:', err);
-    await sendWhatsAppMessage(from, '处理您的请求时出现异常。');
-  }
-});
-
-// 3. 接收来自 GitHub 的事件 (例如新 Issue) -> AI 总结 -> 推送到 WhatsApp
-app.post('/webhook/github', async (req, res) => {
-  res.sendStatus(200);
-  const event = req.headers['x-github-event'];
-  
-  if (event === 'issues' && req.body.action === 'opened') {
-    const issue = req.body.issue;
-    const prompt = `GitHub 收到新 Issue：\n标题：${'$'}{issue.title}\n内容：${'$'}{issue.body}\n请简短总结问题。`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt
-    });
-
-    const notifyText = `🔔 **GitHub 新 Issue 提醒 (#${'$'}{issue.number})**\n\n${'$'}{response.text}`;
-    await sendWhatsAppMessage(process.env.ADMIN_WHATSAPP_NUMBER, notifyText);
-  }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 服务已成功启动！端口号: ${'$'}{PORT}`);
-});
-""".trimIndent()
-
-        val deployScript = """
-#!/bin/bash
-echo "📦 正在初始化 Gemini + GitHub + WhatsApp 自动化服务..."
-npm init -y
-npm install express dotenv @google/genai @octokit/rest axios
-echo "✅ 依赖安装完成！使用 'node server.js' 即可启动微服务。"
-""".trimIndent()
-
-        return mapOf(
-            ".env" to envContent,
-            "package.json" to packageJsonContent,
-            "server.js" to serverJsContent,
-            "setup.sh" to deployScript
-        )
     }
 
     /**
@@ -759,7 +513,10 @@ echo "✅ 依赖安装完成！使用 'node server.js' 即可启动微服务。"
                         targetFetchUrl = inputUrlOrPath.replace("github.com/", "raw.githubusercontent.com/").replace("/blob/", "/")
                     }
                 }
-                val rawResp = com.example.data.api.GitHubApiClient.service.getRawContent(targetFetchUrl, authHeader)
+                val rawResp = com.example.data.api.GitHubApiClient.service.getRawContent(
+                    targetFetchUrl,
+                    if (isTrustedGitHubUrl(targetFetchUrl)) authHeader else null
+                )
                 if (rawResp.isSuccessful && rawResp.body() != null) {
                     rawMarkdown = rawResp.body()!!.string()
                 } else {
@@ -805,7 +562,10 @@ echo "✅ 依赖安装完成！使用 'node server.js' 即可启动微服务。"
                                 fetchedSuccessfully = true
                                 break
                             } else if (!fileContent.downloadUrl.isNullOrBlank()) {
-                                val rawResp = com.example.data.api.GitHubApiClient.service.getRawContent(fileContent.downloadUrl, authHeader)
+                                val rawResp = com.example.data.api.GitHubApiClient.service.getRawContent(
+                                    fileContent.downloadUrl,
+                                    if (isTrustedGitHubUrl(fileContent.downloadUrl)) authHeader else null
+                                )
                                 if (rawResp.isSuccessful && rawResp.body() != null) {
                                     rawMarkdown = rawResp.body()!!.string()
                                     resolvedSource = "$owner/$repo/$path"
@@ -854,7 +614,7 @@ echo "✅ 依赖安装完成！使用 'node server.js' 即可启动微服务。"
                         contents = listOf(Content(role = "user", parts = listOf(Part(text = prompt)))),
                         generationConfig = GenerationConfig(temperature = 0.2f, maxOutputTokens = 2048)
                     )
-                    val geminiResp = GeminiApiClient.service.generateContent(
+                    val geminiResp = GeminiApiClient.service.generateContentWithHeader(
                         model = getSelectedModel(),
                         apiKey = apiKey,
                         request = geminiReq
@@ -1166,10 +926,6 @@ echo "✅ 依赖安装完成！使用 'node server.js' 即可启动微服务。"
                 )
                 chatDao.insertMessage(assistantMsg)
 
-                if (activeSkillId != null) {
-                    incrementSkillPractice(activeSkillId, 40)
-                }
-
                 val updatedSession = chatDao.getSessionById(sessionId)
                 if (updatedSession != null) {
                     chatDao.insertOrUpdateSession(
@@ -1220,7 +976,7 @@ echo "✅ 依赖安装完成！使用 'node server.js' 即可启动微服务。"
             )
 
             val modelName = getSelectedModel()
-            val response = GeminiApiClient.service.generateContent(
+            val response = GeminiApiClient.service.generateContentWithHeader(
                 model = modelName,
                 apiKey = apiKey,
                 request = request
@@ -1244,11 +1000,6 @@ echo "✅ 依赖安装完成！使用 'node server.js' 即可启动微服务。"
                     tokenCount = tokens
                 )
                 chatDao.insertMessage(assistantMsg)
-
-                // Record skill usage & mastery XP growth
-                if (activeSkillId != null) {
-                    incrementSkillPractice(activeSkillId, 35)
-                }
 
                 // Update session count again
                 val updatedSession = chatDao.getSessionById(sessionId)

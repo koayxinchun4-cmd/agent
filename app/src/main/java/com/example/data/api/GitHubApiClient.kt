@@ -124,16 +124,6 @@ interface GitHubOAuthService {
         @Field("device_code") deviceCode: String,
         @Field("grant_type") grantType: String = "urn:ietf:params:oauth:grant-type:device_code"
     ): Response<GitHubOAuthTokenResponse>
-
-    @FormUrlEncoded
-    @POST("login/oauth/access_token")
-    @Headers("Accept: application/json")
-    suspend fun exchangeWebCode(
-        @Field("client_id") clientId: String,
-        @Field("client_secret") clientSecret: String,
-        @Field("code") code: String,
-        @Field("redirect_uri") redirectUri: String? = null
-    ): Response<GitHubOAuthTokenResponse>
 }
 
 object GitHubApiClient {

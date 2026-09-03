@@ -94,7 +94,6 @@ fun CommitCodeToGitHubDialog(
     defaultRepo: String,
     deviceCodeResponse: GitHubDeviceCodeResponse?,
     isOAuthPolling: Boolean,
-    onStartWebOAuth: () -> Unit,
     onStartDeviceOAuth: () -> Unit,
     onCancelDeviceOAuth: () -> Unit,
     onRefreshProfile: () -> Unit,
@@ -252,23 +251,6 @@ fun CommitCodeToGitHubDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Button(
-                                    onClick = onStartWebOAuth,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("btn_start_web_oauth"),
-                                    colors = ButtonDefaults.buttonColors(containerColor = ElectricPurple),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.OpenInBrowser,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("网页一键授权", fontSize = 12.sp)
-                                }
-
                                 OutlinedButton(
                                     onClick = onStartDeviceOAuth,
                                     modifier = Modifier

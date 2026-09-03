@@ -111,7 +111,6 @@ fun OfficeAgentStudioSheet(
     onSaveRepo: (String) -> Unit,
     onSaveToken: (String) -> Unit,
     onUnbindAccount: () -> Unit,
-    onStartWebOAuth: (() -> Unit)? = null,
     onStartDeviceOAuth: () -> Unit,
     onCancelDeviceOAuth: () -> Unit,
     onRefreshUserProfile: () -> Unit,
@@ -1396,22 +1395,6 @@ jobs:
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        if (onStartWebOAuth != null) {
-                                            Button(
-                                                onClick = onStartWebOAuth,
-                                                shape = RoundedCornerShape(8.dp),
-                                                colors = ButtonDefaults.buttonColors(containerColor = ElectricPurple),
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .height(40.dp)
-                                                    .testTag("start_web_oauth_button")
-                                            ) {
-                                                Icon(Icons.Default.OpenInBrowser, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text("网页一键授权", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                            }
-                                        }
-
                                         Button(
                                             onClick = onStartDeviceOAuth,
                                             shape = RoundedCornerShape(8.dp),

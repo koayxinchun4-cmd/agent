@@ -9,17 +9,11 @@ import retrofit2.http.Body
 import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
-import retrofit2.http.Query
 import java.util.concurrent.TimeUnit
 
 interface GeminiApiService {
-    @POST("v1beta/models/{model}:generateContent")
-    suspend fun generateContent(
-        @Path("model") model: String,
-        @Query("key") apiKey: String,
-        @Body request: GeminiRequest
-    ): Response<GeminiResponse>
-
+    // API key is sent via the X-goog-api-key header so it never appears in
+    // request URLs (which HTTP logging would otherwise print to logcat).
     @POST("v1beta/models/{model}:generateContent")
     suspend fun generateContentWithHeader(
         @Path("model") model: String,
@@ -33,7 +27,7 @@ object GeminiApiClient {
 
     val service: GeminiApiService by lazy {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = HttpLoggingInterceptor.Level.BASIC
         }
 
         val okHttpClient = OkHttpClient.Builder()

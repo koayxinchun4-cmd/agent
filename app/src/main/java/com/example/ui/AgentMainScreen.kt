@@ -689,9 +689,6 @@ fun AgentMainScreen(
             defaultRepo = githubRepo,
             deviceCodeResponse = deviceCodeData,
             isOAuthPolling = isOAuthPolling,
-            onStartWebOAuth = {
-                viewModel.openGitHubOAuthInBrowser(context)
-            },
             onStartDeviceOAuth = {
                 viewModel.startGitHubDeviceFlow()
             },
@@ -733,9 +730,6 @@ fun AgentMainScreen(
             onUnbindAccount = {
                 viewModel.unbindGitHubAccount()
                 Toast.makeText(context, "已解除 GitHub 绑定", Toast.LENGTH_SHORT).show()
-            },
-            onStartWebOAuth = {
-                viewModel.openGitHubOAuthInBrowser(context)
             },
             onStartDeviceOAuth = {
                 viewModel.startGitHubDeviceFlow()

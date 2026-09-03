@@ -1,6 +1,5 @@
 package com.example
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,7 +19,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        handleOAuthIntent(intent)
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
@@ -31,18 +29,6 @@ class MainActivity : ComponentActivity() {
                     AgentMainScreen(viewModel = viewModel)
                 }
             }
-        }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        handleOAuthIntent(intent)
-    }
-
-    private fun handleOAuthIntent(intent: Intent?) {
-        val uri = intent?.data
-        if (uri != null && (uri.scheme == "nexus" || uri.host == "github-callback")) {
-            viewModel.handleOAuthDeepLink(uri)
         }
     }
 }

@@ -1,14 +1,13 @@
 package com.example.ui
 
 import android.app.Application
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.api.AgentActivityType
@@ -31,7 +30,6 @@ import com.example.data.repository.AgentRepository
 import com.example.service.TaskCompletionEvent
 import com.example.service.TaskCompletionObserver
 import com.example.service.TaskCompletedEventType
-import com.example.utils.IntentHelper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +37,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -46,6 +45,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import org.json.JSONArray
 
 class AgentViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener {
 
@@ -139,9 +139,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     private val _githubClientId = MutableStateFlow(repository.getGitHubClientId().ifBlank { AgentRepository.DEFAULT_GITHUB_CLIENT_ID })
     val githubClientId: StateFlow<String> = _githubClientId.asStateFlow()
 
-    private val _githubClientSecret = MutableStateFlow(repository.getGitHubClientSecret())
-    val githubClientSecret: StateFlow<String> = _githubClientSecret.asStateFlow()
-
     private val _githubUserProfile = MutableStateFlow<GitHubUserProfile?>(null)
     val githubUserProfile: StateFlow<GitHubUserProfile?> = _githubUserProfile.asStateFlow()
 
@@ -192,6 +189,24 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     init {
         tts = TextToSpeech(application, this)
+        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {
+                // Speaking started; _isSpeaking is already set by speakText()
+            }
+
+            override fun onDone(utteranceId: String?) {
+                _isSpeaking.value = false
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) {
+                _isSpeaking.value = false
+            }
+
+            override fun onError(utteranceId: String?, errorCode: Int) {
+                _isSpeaking.value = false
+            }
+        })
         initAgentLiveActivities()
         loadInitialSession()
         refreshGitHubRepoInfo(_githubRepo.value)
@@ -291,27 +306,34 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun loadInitialSession() {
         viewModelScope.launch {
-            repository.getAllSessions().collect { sessionList ->
-                if (_currentSessionId.value == null) {
-                    if (sessionList.isNotEmpty()) {
-                        selectSession(sessionList.first().id)
-                    } else {
-                        createNewSession()
-                    }
+            val sessionList = repository.getAllSessions().first()
+            if (_currentSessionId.value == null) {
+                if (sessionList.isNotEmpty()) {
+                    selectSession(sessionList.first().id)
+                } else {
+                    createNewSession()
                 }
             }
         }
     }
 
+    // H2 fix: only one message collector is active at a time. The previous
+    // implementation launched a new uncancelled collector on every session
+    // switch, leaking coroutines and letting stale sessions overwrite messages.
+    private var messagesCollectorJob: Job? = null
+
     fun selectSession(sessionId: String) {
         _currentSessionId.value = sessionId
-        viewModelScope.launch {
+        messagesCollectorJob?.cancel()
+        messagesCollectorJob = viewModelScope.launch {
             val session = repository.getSession(sessionId)
             if (session?.activeSkillId != null) {
                 _activeSkillId.value = session.activeSkillId
             }
             repository.getMessagesForSession(sessionId).collect { msgList ->
-                _messages.value = msgList
+                if (_currentSessionId.value == sessionId) {
+                    _messages.value = msgList
+                }
             }
         }
     }
@@ -400,7 +422,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     ) {
         viewModelScope.launch {
             val id = "custom_" + System.currentTimeMillis()
-            val promptsJson = "[" + samplePrompts.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" } + "]"
+            // M7 fix: build the JSON array with org.json so quotes, newlines and
+            // backslashes inside prompts can never produce malformed JSON.
+            val promptsJson = JSONArray(samplePrompts).toString()
             val skill = AgentSkill(
                 id = id,
                 name = name,
@@ -451,7 +475,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             if (result.isSuccess) {
                 val parsed = result.getOrNull()!!
                 val newSkillId = "gh_skill_" + System.currentTimeMillis()
-                val promptsJson = "[" + parsed.samplePrompts.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" } + "]"
+                // M7 fix: see createCustomSkill above.
+                val promptsJson = JSONArray(parsed.samplePrompts).toString()
 
                 val icon = when (parsed.category.lowercase()) {
                     "coding" -> "code"
@@ -842,11 +867,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         _githubClientId.value = clientId.trim()
     }
 
-    fun saveGitHubClientSecret(secret: String) {
-        repository.setGitHubClientSecret(secret)
-        _githubClientSecret.value = secret.trim()
-    }
-
     fun refreshGitHubUserProfile() {
         if (_githubToken.value.isBlank()) return
         viewModelScope.launch {
@@ -870,11 +890,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 _userRepositories.value = result.getOrDefault(emptyList())
             }
         }
-    }
-
-    fun openGitHubOAuthInBrowser(context: Context, customClientId: String? = null) {
-        val authUrl = repository.getOAuthAuthorizeUrl(customClientId)
-        IntentHelper.openBrowserUrl(context, authUrl)
     }
 
     fun startGitHubDeviceFlow(customClientId: String? = null) {
@@ -933,7 +948,17 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                         _deviceCodeResponse.value = null
                         _gitHubStatusMessage.value = "用户已拒绝授权"
                         break
+                    } else if (!tokenResp?.error.isNullOrBlank()) {
+                        _isOAuthPolling.value = false
+                        _deviceCodeResponse.value = null
+                        _gitHubStatusMessage.value = "GitHub 授权失败: ${tokenResp?.errorDescription ?: tokenResp?.error}"
+                        break
                     }
+                } else {
+                    _isOAuthPolling.value = false
+                    _deviceCodeResponse.value = null
+                    _gitHubStatusMessage.value = "GitHub 授权轮询异常: ${pollResult.exceptionOrNull()?.message ?: "未知错误"}"
+                    break
                 }
             }
             _isOAuthPolling.value = false
@@ -945,31 +970,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         oauthPollingJob = null
         _deviceCodeResponse.value = null
         _isOAuthPolling.value = false
-    }
-
-    fun handleOAuthDeepLink(uri: Uri) {
-        val code = uri.getQueryParameter("code")
-        if (!code.isNullOrBlank()) {
-            val clientId = _githubClientId.value.ifBlank { AgentRepository.DEFAULT_GITHUB_CLIENT_ID }
-            val clientSecret = _githubClientSecret.value
-            if (clientSecret.isNotBlank()) {
-                viewModelScope.launch {
-                    _isGitHubLoading.value = true
-                    val result = repository.exchangeOAuthWebCode(clientId, clientSecret, code)
-                    _isGitHubLoading.value = false
-                    if (result.isSuccess) {
-                        _githubToken.value = result.getOrNull() ?: ""
-                        _gitHubStatusMessage.value = "🎉 GitHub OAuth 授权成功！"
-                        refreshGitHubUserProfile()
-                        refreshGitHubRepoInfo(_githubRepo.value)
-                    } else {
-                        _gitHubStatusMessage.value = "OAuth Token 换取失败: ${result.exceptionOrNull()?.message}"
-                    }
-                }
-            } else {
-                _gitHubStatusMessage.value = "接收到 OAuth Code，但未配置 GitHub Client Secret"
-            }
-        }
     }
 
     fun saveGitHubRepo(repo: String) {
@@ -1560,5 +1560,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         tts?.shutdown()
         speechRecognizer?.destroy()
         oauthPollingJob?.cancel()
+        messagesCollectorJob?.cancel()
     }
 }

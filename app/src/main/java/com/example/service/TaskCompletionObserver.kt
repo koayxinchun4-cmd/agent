@@ -38,23 +38,6 @@ object TaskCompletionObserver {
     private val _eventsFlow = MutableSharedFlow<TaskCompletionEvent>(extraBufferCapacity = 64)
     val eventsFlow = _eventsFlow.asSharedFlow()
 
-    // Registered listener callbacks
-    private val callbacks = mutableListOf<(TaskCompletionEvent) -> Unit>()
-
-    fun registerCallback(callback: (TaskCompletionEvent) -> Unit) {
-        synchronized(callbacks) {
-            if (!callbacks.contains(callback)) {
-                callbacks.add(callback)
-            }
-        }
-    }
-
-    fun unregisterCallback(callback: (TaskCompletionEvent) -> Unit) {
-        synchronized(callbacks) {
-            callbacks.remove(callback)
-        }
-    }
-
     /**
      * Broadcast task completed event.
      * Invoked when user runs code, finishes editing docs, pushes to GitHub, etc.
@@ -80,16 +63,5 @@ object TaskCompletionObserver {
 
         // Emit to flow
         _eventsFlow.tryEmit(event)
-
-        // Invoke direct callbacks
-        synchronized(callbacks) {
-            callbacks.forEach { callback ->
-                try {
-                    callback(event)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error in task callback", e)
-                }
-            }
-        }
     }
 }

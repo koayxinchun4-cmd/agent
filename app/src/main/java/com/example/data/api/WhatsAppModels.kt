@@ -47,7 +47,7 @@ data class WhatsAppErrorResponse(
 data class WhatsAppWebhookConfig(
     val token: String = "",
     val phoneNumberId: String = "",
-    val verifyToken: String = "my_custom_verify_token_123",
+    val verifyToken: String = "",
     val adminPhoneNumber: String = ""
 )
 
