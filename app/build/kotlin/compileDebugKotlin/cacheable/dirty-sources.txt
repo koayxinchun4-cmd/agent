@@ -1,0 +1,17 @@
+/workspaces/agent/app/build/generated/ksp/debug/kotlin/com/example/agent/data/remote/GeminiResponseJsonAdapter.kt
+/workspaces/agent/app/src/main/java/com/example/agent/data/local/ChatDao.kt
+/workspaces/agent/app/src/main/java/com/example/agent/data/remote/GeminiApiService.kt
+/workspaces/agent/app/build/generated/ksp/debug/kotlin/com/example/agent/data/remote/CandidateJsonAdapter.kt
+/workspaces/agent/app/build/generated/ksp/debug/kotlin/com/example/agent/data/remote/GeminiRequestJsonAdapter.kt
+/workspaces/agent/app/build/generated/ksp/debug/kotlin/com/example/agent/data/local/ChatDao_Impl.kt
+/workspaces/agent/app/src/main/java/com/example/agent/ui/screen/ChatScreen.kt
+/workspaces/agent/app/build/generated/ksp/debug/kotlin/com/example/agent/data/remote/PartJsonAdapter.kt
+/workspaces/agent/app/src/main/java/com/example/agent/data/local/AppDatabase.kt
+/workspaces/agent/app/src/main/java/com/example/agent/MainActivity.kt
+/workspaces/agent/app/build/generated/ksp/debug/kotlin/com/example/agent/data/remote/ContentJsonAdapter.kt
+/workspaces/agent/app/src/main/java/com/example/agent/ui/screen/ChatViewModel.kt
+/workspaces/agent/app/build/generated/ksp/debug/kotlin/com/example/agent/data/local/AppDatabase_Impl.kt
+/workspaces/agent/app/src/main/java/com/example/agent/data/remote/GeminiModels.kt
+/workspaces/agent/app/src/main/java/com/example/agent/ui/theme/Theme.kt
+/workspaces/agent/app/src/main/java/com/example/agent/data/repository/ChatRepository.kt
+/workspaces/agent/app/src/main/java/com/example/agent/data/local/ChatMessage.kt
