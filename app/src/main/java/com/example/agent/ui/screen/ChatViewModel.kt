@@ -22,7 +22,12 @@ class ChatViewModel(private val repository: ChatRepository) : ViewModel() {
 
     fun sendMessage(text: String) {
         viewModelScope.launch {
-            repository.sendMessage(text)
+            try {
+                repository.sendMessage(text)
+            } catch (e: Exception) {
+                val message = e.message ?: e.javaClass.simpleName
+                repository.saveAssistantMessage("Request failed: $message")
+            }
         }
     }
 
