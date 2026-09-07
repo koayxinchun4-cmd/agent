@@ -16,10 +16,8 @@ class ChatRepository(
     fun getAllMessages(): Flow<List<ChatMessage>> = chatDao.getAllMessages()
 
     suspend fun sendMessage(userText: String): String {
-        // 保存用户消息
         chatDao.insertMessage(ChatMessage(content = userText, isUser = true))
 
-        // 调用 Gemini API
         val request = GeminiRequest(
             contents = listOf(Content(parts = listOf(Part(text = userText))))
         )
@@ -27,9 +25,12 @@ class ChatRepository(
         val replyText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
             ?: "No response"
 
-        // 保存助手回复
         chatDao.insertMessage(ChatMessage(content = replyText, isUser = false))
         return replyText
+    }
+
+    suspend fun saveAssistantMessage(text: String) {
+        chatDao.insertMessage(ChatMessage(content = text, isUser = false))
     }
 
     suspend fun clearHistory() = chatDao.clearAll()
