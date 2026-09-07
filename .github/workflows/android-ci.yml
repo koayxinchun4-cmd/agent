@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -64,14 +68,54 @@ jobs:
       - name: Publish APK to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ github.token }}
           publish_dir: ./public
+
+      - name: Calculate semantic version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          latest_tag="$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')"
+
+          if [[ -z "$latest_tag" ]]; then
+            version="1.0.0"
+          else
+            if [[ ! "$latest_tag" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              echo "Latest release tag '$latest_tag' is not a valid semantic version (vMAJOR.MINOR.PATCH)."
+              exit 1
+            fi
+
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch="${BASH_REMATCH[3]}"
+            message="${{ github.event.head_commit.message }}"
+
+            if [[ "$message" =~ BREAKING[[:space:]]CHANGE ]] || [[ "$message" =~ ^[^:]+!:\ |^.*!:[[:space:]] ]]; then
+              major=$((major + 1))
+              minor=0
+              patch=0
+            elif [[ "$message" =~ ^feat(\(.+\))?:[[:space:]] ]]; then
+              minor=$((minor + 1))
+              patch=0
+            else
+              patch=$((patch + 1))
+            fi
+
+            version="${major}.${minor}.${patch}"
+          fi
+
+          echo "version=v${version}" >> "$GITHUB_OUTPUT"
+          echo "Next release: v${version}"
 
       - name: Publish APK to GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: v0.1.${{ github.run_number }}
+          TAG_NAME: ${{ steps.version.outputs.version }}
         run: |
           gh release create "$TAG_NAME" \
             app/build/outputs/apk/debug/app-debug.apk \
