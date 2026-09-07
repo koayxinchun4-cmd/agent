@@ -16,6 +16,7 @@ import androidx.room.Room
 import com.example.agent.data.local.AppDatabase
 import com.example.agent.data.remote.GeminiApiService
 import com.example.agent.data.repository.ChatRepository
+import com.example.agent.ui.screen.ChatScreen
 import com.example.agent.ui.screen.ChatViewModel
 import com.example.agent.ui.theme.AgentTheme
 import retrofit2.Retrofit
