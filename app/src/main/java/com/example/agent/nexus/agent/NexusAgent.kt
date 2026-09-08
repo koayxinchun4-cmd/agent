@@ -31,7 +31,7 @@ class NexusAgent(
 
         fun emit(step: AgentStepResult, attempt: Int = 0) {
             steps += step
-            onProgress(AgentProgress(step, attempt))
+            onProgress(AgentProgress(step = step, attempt = attempt, steps = steps.toList()))
         }
 
         emit(AgentStepResult("understand_request", true, "任务已理解"))
