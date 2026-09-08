@@ -9,11 +9,12 @@ data class AgentStepResult(
     val output: String
 )
 
-/** Execution result with the plan and tool steps kept separate for UI/logging. */
+/** Execution result with the plan, attempts and tool steps kept separate for UI/logging. */
 data class AgentExecution(
     val plan: AgentPlan,
     val steps: List<AgentStepResult>,
-    val result: AgentResult
+    val result: AgentResult,
+    val attempts: Int = 1
 )
 
 internal fun ToolResult.toAgentStep(step: String): AgentStepResult = when (this) {
