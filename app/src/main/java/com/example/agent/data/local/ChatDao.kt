@@ -13,6 +13,9 @@ interface ChatDao {
     @Query("SELECT * FROM messages ORDER BY timestamp ASC")
     fun getAllMessages(): Flow<List<ChatMessage>>
 
+    @Query("SELECT * FROM messages ORDER BY timestamp ASC")
+    suspend fun getAllMessagesOnce(): List<ChatMessage>
+
     @Query("DELETE FROM messages")
     suspend fun clearAll()
 }
