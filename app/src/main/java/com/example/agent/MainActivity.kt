@@ -10,8 +10,11 @@ import androidx.room.Room
 import com.example.agent.data.local.AppDatabase
 import com.example.agent.data.remote.GeminiApiService
 import com.example.agent.data.repository.ChatRepository
+import com.example.agent.nexus.agent.NexusAgent
+import com.example.agent.nexus.tool.ToolRegistry
 import com.example.agent.ui.screen.ChatViewModel
 import com.example.agent.ui.screen.NexusApp
+import com.example.agent.ui.screen.TaskViewModel
 import com.example.agent.ui.theme.AgentTheme
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
@@ -35,13 +38,17 @@ class MainActivity : ComponentActivity() {
             db.chatDao(),
             retrofit.create(GeminiApiService::class.java)
         )
+        val nexusAgent = NexusAgent(ToolRegistry())
 
         setContent {
             AgentTheme {
                 val chatViewModel: ChatViewModel = viewModel(
                     factory = ChatViewModelFactory(repository)
                 )
-                NexusApp(chatViewModel)
+                val taskViewModel: TaskViewModel = viewModel(
+                    factory = TaskViewModelFactory(nexusAgent)
+                )
+                NexusApp(chatViewModel, taskViewModel)
             }
         }
     }
@@ -53,5 +60,14 @@ class ChatViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return ChatViewModel(repository) as T
+    }
+}
+
+class TaskViewModelFactory(
+    private val agent: NexusAgent
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return TaskViewModel(agent) as T
     }
 }

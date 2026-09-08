@@ -28,7 +28,10 @@ private enum class NexusTab(val label: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NexusApp(viewModel: ChatViewModel) {
+fun NexusApp(
+    viewModel: ChatViewModel,
+    taskViewModel: TaskViewModel
+) {
     var tab by remember { mutableStateOf(NexusTab.HOME) }
     var selectedFeature by remember { mutableStateOf<NexusFeature?>(null) }
     var showTask by remember { mutableStateOf(false) }
@@ -77,7 +80,10 @@ fun NexusApp(viewModel: ChatViewModel) {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             when {
-                showTask -> TaskScreen(onBack = { showTask = false })
+                showTask -> TaskScreen(
+                    onBack = { showTask = false },
+                    viewModel = taskViewModel
+                )
                 feature != null -> NexusFeatureScreen(feature)
                 tab == NexusTab.HOME -> NexusHomeScreen(
                     onOpenChat = { tab = NexusTab.CHAT },
