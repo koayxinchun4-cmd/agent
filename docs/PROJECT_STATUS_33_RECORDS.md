@@ -101,9 +101,28 @@ Nexus uses GPLv3 as the project license direction. GPLv3 governs distribution of
 The current engineering priority is: stabilize Android frontend/UI and CI first, then continue Agent Task UI and backend/advanced integrations later. Existing useful historical functionality must not be accidentally deleted during refactoring.
 
 ## 33. Current CI status and recovery rule
-The latest fix commit is `5c4ce240f371c0c2fb68101c3328cbf664f2fd2a`, addressing the Compose `weight` compilation problem in the chat composer. GitHub Actions **Run #74** was triggered for this commit and was observed as `queued` at the time of this record. Therefore this record does **not** claim CI is green. The recovery rule is: inspect the actual failing workflow/job/log, fix the concrete error, rerun, and only declare success after GitHub Actions reports a successful build.
+The project should only declare CI green after the actual GitHub Actions run reports success. The recovery rule is: inspect the actual failing workflow/job/log, fix the concrete error, rerun, and verify success before continuing.
 
 ---
+
+## Follow-up development backlog
+
+### 34. Hybrid Cloud / Server File Analysis — PLANNED
+Nexus should later support an optional cloud/server analysis path for tasks that benefit from backend compute, such as large files, complex document processing, Python/data analysis, long-running Agent tasks, or larger server-side models.
+
+Design direction:
+- **Local-first by default**: ordinary/private files should remain on-device when practical.
+- **Explicit user consent** before a file is uploaded to a server.
+- Clearly communicate what is uploaded, where it goes, retention/deletion behavior, and relevant privacy implications.
+- Use HTTPS and appropriate authentication/authorization.
+- Apply file-size/type limits, safe file handling, access control, encryption, and automatic cleanup where appropriate.
+- Keep the backend optional rather than making the Android app depend on Python/FastAPI.
+- A future Hybrid Agent may route tasks between local Android tools and cloud tools based on capability, size, privacy, and user approval.
+
+Possible future flow:
+`User selects file → Nexus explains cloud requirement → user approves → secure upload → server/AI analysis → result → cleanup according to policy`
+
+This is a **future development item**, not part of the current SAF/File Agent v1 implementation.
 
 ## Status labels
 
@@ -115,8 +134,7 @@ The latest fix commit is `5c4ce240f371c0c2fb68101c3328cbf664f2fd2a`, addressing 
 - **DEPRECATED** — should not be treated as the current implementation.
 
 ## Immediate next step
-1. Wait for / inspect GitHub Actions Run #74.
-2. If failed, use the exact compiler/test error as the source of truth.
-3. Fix only the confirmed blocker and rerun CI.
-4. After CI is green, continue the frontend Agent Task experience.
-5. Keep backend/software-server work postponed unless it becomes necessary for a later feature.
+1. Continue Android SAF → File Agent v1.
+2. Keep the current frontend/Agent Core work local-first.
+3. After the foundation is stable, evaluate Hybrid Cloud / Server File Analysis as a separate future feature.
+4. Keep backend/software-server work postponed unless it becomes necessary for a later feature.
