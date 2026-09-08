@@ -159,7 +159,7 @@ Memory 應以本地優先為原則，並清楚區分短期上下文與長期記�
 - GitHub user / account
 - OAuth / Device Flow 方向
 
-其中歷史 commit `5d80b1a28b9c9898c5126e0c227cef7f2e6028cc` 明確增加了 Issue comment 與 Issue update API，同時擴充了 ChatSession / AgentMemory 資料層。 
+其中歷史 commit `5d80b1a28b9c9898c5126e0c227cef7f2e6028cc` 明確增加了 Issue comment 與 Issue update API，同時擴充了 ChatSession / AgentMemory 資料層。
 
 未來 Nexus GitHub Agent 可以逐步形成：
 
@@ -314,7 +314,152 @@ IDE temporary files
 
 清理前應先確認 `.gitignore` 與 Git tracking 狀態，再逐步處理，避免一次誤刪真正的 source。
 
-## 15. 功能狀態分類
+## 15. ChatGPT @Connectors / Apps：Nexus 架構參考
+
+> 本節是根據 ChatGPT 對話介面中輸入 `@` 後出現的 Apps / Connectors 概念整理，**不是說這些服務目前已經存在於 Nexus**。
+
+在 ChatGPT 中，`@` 可以用來選擇特定的 App / Connector，讓對話在需要時使用外部資料來源或工具。截圖中曾看到的例子包括：
+
+- ClinicalTrials.gov
+- CMS Coverage
+- CMS Open Data
+- DailyMed
+- Medicare Care Compare
+- NPI Registry
+- OpenAI Platform
+- openFDA
+- PubMed
+- RxNorm
+
+這些名稱代表不同的外部資料來源 / 服務連接能力。例如 PubMed 可作為醫學文獻資料來源，openFDA 可作為 FDA 公開資料來源；具體可用能力取決於對應 Connector 的實際實作與授權。
+
+### Nexus 不應直接複製 UI，而應吸收架構概念
+
+建議 Nexus 將 `@` 設計成 **Tools / Skills / Connectors 的入口**：
+
+```text
+Nexus Chat
+     │
+     ├── @GitHub
+     ├── @Files
+     ├── @Web
+     ├── @PubMed
+     ├── @openFDA
+     ├── @Memory
+     ├── @Office
+     ├── @Codex
+     └── @Apps
+             │
+             ↓
+       Tool / Connector Registry
+             │
+             ↓
+          Agent Core
+             │
+       ┌─────┴─────┐
+       ↓           ↓
+   Planner       Executor
+       │           │
+       └─────┬─────┘
+             ↓
+          Result
+```
+
+### 建議的 Nexus Tool Registry
+
+每一個 Connector / Tool 可以具有：
+
+```text
+Tool
+├── id
+├── name
+├── description
+├── capabilities
+├── input schema
+├── output schema
+├── permissions
+├── authentication state
+└── execution handler
+```
+
+這樣未來新增工具時，不需要修改整個聊天 UI，只要註冊新的 Tool 即可。
+
+### `@` 不應只是 UI 標籤
+
+例如使用者輸入：
+
+> `@GitHub 幫我查看 agent 最近一次 Actions 是否成功`
+
+理想流程應是：
+
+```text
+@GitHub
+   ↓
+Resolve Tool
+   ↓
+Check permission / authentication
+   ↓
+Planner
+   ↓
+GitHub API
+   ↓
+Normalize result
+   ↓
+Nexus response
+```
+
+而：
+
+> `@PubMed 搜尋某個主題的研究`
+
+則應交給 PubMed Connector，而不是讓模型假裝自己查過資料。
+
+### 與 Skills 的關係
+
+建議不要把 Skill、Tool、Connector 混成同一個概念：
+
+```text
+Skill      = Agent「知道怎麼做」
+Tool       = Agent「可以做什麼」
+Connector  = Tool「連接到哪個外部服務」
+```
+
+例如：
+
+```text
+Skill: GitHub Code Review
+        ↓
+Tools: repository.read / file.read / pull_request.read
+        ↓
+Connector: GitHub
+```
+
+這樣 Nexus 才能逐步從「聊天 App」變成真正可擴充的 Mobile Agent。
+
+### Mobile-first 的特殊設計
+
+Nexus 是手機 Agent，因此 Connector 不應只限制在網路服務：
+
+```text
+External Connectors
+├── GitHub
+├── Google services
+├── Web / search
+└── Future APIs
+
+Device Tools
+├── Files
+├── Share
+├── Camera
+├── Notifications
+├── Intents
+├── App links
+└── Voice
+```
+
+這能讓 Nexus 同時具備「雲端服務 Agent」與「手機本地 Agent」能力，而且維持免 Root 的設計原則。
+
+## 16. 功能狀態分類
 
 之後所有大型修改建議使用以下分類：
 
@@ -327,7 +472,7 @@ IDE temporary files
 | `REFERENCE` | 歷史設計 / 原型，保留作為參考 |
 | `DEPRECATED` | 確認不再需要，只有在確認後才移除 |
 
-## 16. 建議開發路線
+## 17. 建議開發路線
 
 ### Phase 1 — Nexus Foundation
 
@@ -380,7 +525,7 @@ IDE temporary files
 - Optional large local assets/models
 - Advanced agent collaboration
 
-## 17. 最重要的結論
+## 18. 最重要的結論
 
 這個 repository 不應被視為「從零開始的新 App」。
 
