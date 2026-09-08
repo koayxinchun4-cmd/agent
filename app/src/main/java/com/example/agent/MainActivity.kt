@@ -11,6 +11,7 @@ import com.example.agent.data.local.AppDatabase
 import com.example.agent.data.remote.GeminiApiService
 import com.example.agent.data.repository.ChatRepository
 import com.example.agent.nexus.agent.NexusAgent
+import com.example.agent.nexus.tool.LocalFileTool
 import com.example.agent.nexus.tool.LocalTaskTool
 import com.example.agent.nexus.tool.ToolRegistry
 import com.example.agent.ui.screen.ChatViewModel
@@ -39,7 +40,12 @@ class MainActivity : ComponentActivity() {
             db.chatDao(),
             retrofit.create(GeminiApiService::class.java)
         )
-        val toolRegistry = ToolRegistry(listOf(LocalTaskTool()))
+        val toolRegistry = ToolRegistry(
+            listOf(
+                LocalTaskTool(),
+                LocalFileTool(filesDir)
+            )
+        )
         val nexusAgent = NexusAgent(toolRegistry)
 
         setContent {
