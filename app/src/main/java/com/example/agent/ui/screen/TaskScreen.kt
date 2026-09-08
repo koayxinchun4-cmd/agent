@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.agent.nexus.agent.AgentExecution
+import com.example.agent.nexus.agent.AgentProgress
 import com.example.agent.nexus.agent.AgentResult
 import com.example.agent.nexus.agent.AgentStepResult
 
@@ -112,6 +113,7 @@ fun TaskScreen(
                 is TaskUiState.Failed -> state.execution
                 TaskUiState.Idle -> null
             }
+            val progress = (uiState as? TaskUiState.Running)?.progress
             val taskText = when (val state = uiState) {
                 is TaskUiState.Running -> state.task.input
                 is TaskUiState.Completed -> state.task.input
@@ -121,11 +123,11 @@ fun TaskScreen(
 
             TaskSummary(taskText, uiState)
             Text("Agent workflow", style = MaterialTheme.typography.titleLarge)
-            taskSteps(execution).forEachIndexed { index, step ->
-                TaskStepCard(step, isLast = index == taskSteps(execution).lastIndex)
+            taskSteps(execution, progress).forEachIndexed { index, step ->
+                TaskStepCard(step, isLast = index == taskSteps(execution, progress).lastIndex)
             }
 
-            CurrentAction(execution, uiState)
+            CurrentAction(execution, progress, uiState)
 
             if (finished) {
                 val resultText = when (val state = uiState) {
@@ -174,28 +176,56 @@ private fun TaskSummary(text: String, state: TaskUiState) {
     }
 }
 
-private fun taskSteps(execution: AgentExecution?): List<TaskStep> {
+private fun taskSteps(execution: AgentExecution?, progress: AgentProgress?): List<TaskStep> {
     val steps = execution?.steps.orEmpty()
+    val liveStep = progress?.step?.step
     val has = { name: String -> steps.any { it.step == name || it.step.startsWith(name) } }
-    val failed = { name: String -> steps.lastOrNull { it.step == name || it.step.startsWith(name) }?.success == false }
-    val active = if (execution == null) "understand_request" else null
+    val failed = { name: String ->
+        steps.lastOrNull { it.step == name || it.step.startsWith(name) }?.success == false
+    }
+    val isLive = { name: String -> liveStep == name || liveStep?.startsWith(name) == true }
+
     return listOf(
-        TaskStep("理解需求", "分析目标与约束", if (has("understand_request")) TaskStepStatus.DONE else TaskStepStatus.ACTIVE),
-        TaskStep("制定计划", "拆分任务与选择执行路径", if (has("use_tool:") || has("answer")) TaskStepStatus.DONE else if (active == null) TaskStepStatus.ACTIVE else TaskStepStatus.PENDING),
-        TaskStep("执行工具", "调用可用 Tools / Models", when { failed("use_tool:") -> TaskStepStatus.FAILED; has("use_tool:") -> TaskStepStatus.DONE; else -> TaskStepStatus.PENDING }),
-        TaskStep("验证结果", "检查执行结果是否满足目标", if (has("verify")) if (failed("verify")) TaskStepStatus.FAILED else TaskStepStatus.DONE else TaskStepStatus.PENDING),
-        TaskStep("完成", "整理最终结果并交给你", if (has("answer")) if (failed("answer")) TaskStepStatus.FAILED else TaskStepStatus.DONE else TaskStepStatus.PENDING)
+        TaskStep(
+            "理解需求",
+            "分析目标与约束",
+            when { has("understand_request") -> TaskStepStatus.DONE; isLive("understand_request") -> TaskStepStatus.ACTIVE; else -> TaskStepStatus.PENDING }
+        ),
+        TaskStep(
+            "制定计划",
+            "拆分任务与选择执行路径",
+            when { has("plan") -> TaskStepStatus.DONE; isLive("plan") -> TaskStepStatus.ACTIVE; else -> TaskStepStatus.PENDING }
+        ),
+        TaskStep(
+            "执行工具",
+            "调用可用 Tools / Models",
+            when { failed("use_tool:") -> TaskStepStatus.FAILED; has("use_tool:") -> TaskStepStatus.DONE; isLive("use_tool:") -> TaskStepStatus.ACTIVE; else -> TaskStepStatus.PENDING }
+        ),
+        TaskStep(
+            "验证结果",
+            "检查执行结果是否满足目标",
+            when { failed("verify") -> TaskStepStatus.FAILED; has("verify") -> TaskStepStatus.DONE; isLive("verify") -> TaskStepStatus.ACTIVE; else -> TaskStepStatus.PENDING }
+        ),
+        TaskStep(
+            "完成",
+            "整理最终结果并交给你",
+            when { failed("answer") -> TaskStepStatus.FAILED; has("answer") -> TaskStepStatus.DONE; isLive("answer") -> TaskStepStatus.ACTIVE; else -> TaskStepStatus.PENDING }
+        )
     )
 }
 
 @Composable
-private fun CurrentAction(execution: AgentExecution?, state: TaskUiState) {
+private fun CurrentAction(execution: AgentExecution?, progress: AgentProgress?, state: TaskUiState) {
+    val liveStep = progress?.step?.step
     val action = when {
         state is TaskUiState.Completed -> "Task completed"
         state is TaskUiState.Failed -> "Task failed"
+        liveStep == "understand_request" -> "Understanding request…"
+        liveStep == "plan" -> "Planning execution path…"
+        liveStep?.startsWith("use_tool:") == true -> "Executing ${liveStep.substringAfter("use_tool:").substringBefore("#attempt")}…"
+        liveStep == "verify" -> "Verifying result…"
+        liveStep == "answer" -> "Preparing final answer…"
         execution == null -> "Starting Agent…"
-        execution.steps.lastOrNull()?.step?.startsWith("use_tool:") == true -> "Executing tool…"
-        execution.steps.lastOrNull()?.step == "verify" -> "Verifying result…"
         else -> "Planning next action…"
     }
     Card(
@@ -210,6 +240,10 @@ private fun CurrentAction(execution: AgentExecution?, state: TaskUiState) {
             execution?.plan?.let {
                 Spacer(Modifier.height(8.dp))
                 Text("Route: ${it.route} · Tool: ${it.toolId ?: "none"}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            progress?.let {
+                Spacer(Modifier.height(6.dp))
+                Text(it.step.output, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
