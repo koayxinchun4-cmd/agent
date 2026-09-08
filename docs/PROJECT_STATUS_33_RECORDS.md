@@ -124,6 +124,33 @@ Possible future flow:
 
 This is a **future development item**, not part of the current SAF/File Agent v1 implementation.
 
+### 35. Network Security & Online Platform Integration — PLANNED
+Nexus should later develop a dedicated network-security and safe-online-integration layer for interacting with public internet services and platforms such as **Bilibili (哔哩哔哩), REDnote / Xiaohongshu (小红书), and Zhihu (知乎)**.
+
+Scope to study and design:
+- HTTPS/TLS and secure network communication.
+- API-first integration where an official API or supported integration exists.
+- Authentication, token/session handling, least-privilege access, and secure secret storage.
+- User-consent and permission boundaries before accessing accounts, content, or private data.
+- Input/output validation and safe handling of untrusted web content.
+- Rate limits, retries, timeouts, and abuse-prevention safeguards.
+- Avoid bypassing platform security, access controls, CAPTCHAs, paywalls, or other technical restrictions.
+- Respect platform terms, robots/policies where applicable, copyright, privacy, and applicable law.
+- Do not collect or upload unnecessary user data.
+- Keep credentials out of source code, logs, GitHub Issues, and Skills.
+- Prefer read-only/research capabilities before automation or posting capabilities.
+
+Potential future Agent capabilities:
+- Search/research public content.
+- Summarize or compare public posts/articles/videos.
+- Extract permitted metadata or links.
+- Optional account actions only after explicit user authorization and only through permitted/legitimate integration paths.
+
+Security principle:
+`Discover → Authenticate safely → Validate → Request minimally → Rate-limit → Handle untrusted content → Audit → Revoke/cleanup`
+
+This is a **future development item**. It does not mean Nexus currently integrates with Bilibili, REDnote/Xiaohongshu, or Zhihu.
+
 ## Status labels
 
 - **CURRENT** — already present or actively being stabilized.
@@ -136,5 +163,5 @@ This is a **future development item**, not part of the current SAF/File Agent v1
 ## Immediate next step
 1. Continue Android SAF → File Agent v1.
 2. Keep the current frontend/Agent Core work local-first.
-3. After the foundation is stable, evaluate Hybrid Cloud / Server File Analysis as a separate future feature.
+3. After the foundation is stable, evaluate Hybrid Cloud / Server File Analysis and Network Security & Online Platform Integration as separate future features.
 4. Keep backend/software-server work postponed unless it becomes necessary for a later feature.
