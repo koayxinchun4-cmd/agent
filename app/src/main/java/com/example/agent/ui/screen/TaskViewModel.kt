@@ -3,6 +3,7 @@ package com.example.agent.ui.screen
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.agent.nexus.agent.AgentExecution
+import com.example.agent.nexus.agent.AgentProgress
 import com.example.agent.nexus.agent.AgentResult
 import com.example.agent.nexus.agent.AgentTask
 import com.example.agent.nexus.agent.NexusAgent
@@ -15,7 +16,11 @@ import java.util.UUID
 
 sealed interface TaskUiState {
     data object Idle : TaskUiState
-    data class Running(val task: AgentTask, val execution: AgentExecution? = null) : TaskUiState
+    data class Running(
+        val task: AgentTask,
+        val progress: AgentProgress? = null,
+        val execution: AgentExecution? = null
+    ) : TaskUiState
     data class Completed(val task: AgentTask, val execution: AgentExecution) : TaskUiState
     data class Failed(val task: AgentTask, val execution: AgentExecution) : TaskUiState
 }
@@ -40,7 +45,13 @@ class TaskViewModel(
         _uiState.value = TaskUiState.Running(task)
 
         executionJob = viewModelScope.launch {
-            val execution = agent.executeDetailed(task)
+            val execution = agent.executeDetailed(task) { progress ->
+                _uiState.value = TaskUiState.Running(
+                    task = task,
+                    progress = progress,
+                    execution = null
+                )
+            }
             _uiState.value = when (execution.result) {
                 is AgentResult.Success -> TaskUiState.Completed(task, execution)
                 is AgentResult.Failure -> TaskUiState.Failed(task, execution)
