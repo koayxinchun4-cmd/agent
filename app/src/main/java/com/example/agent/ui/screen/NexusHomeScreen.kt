@@ -1,6 +1,8 @@
 package com.example.agent.ui.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,17 +11,28 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.example.agent.nexus.NexusFeature
 
@@ -30,144 +43,164 @@ fun NexusHomeScreen(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Column {
-                Text(
-                    "Nexus",
-                    style = MaterialTheme.typography.headlineLarge
-                )
-                Text(
-                    "你的手机 AI Agent",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "理解目标、规划任务、调用工具，并在需要时验证与重试。",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                    Spacer(Modifier.size(12.dp))
+                    Column {
+                        Text("Nexus", style = MaterialTheme.typography.headlineSmall)
+                        Text(
+                            "Personal AI Agent",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Text(
+                        "● Ready",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
             }
         }
 
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
             ) {
-                Column(Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Agent Core", style = MaterialTheme.typography.titleLarge)
-                        AssistChip(
-                            onClick = {},
-                            label = { Text("Online") }
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
+                Column(Modifier.padding(22.dp)) {
                     Text(
-                        "Plan → Tool → Verify → Retry",
-                        style = MaterialTheme.typography.titleMedium
+                        "What should Nexus do?",
+                        style = MaterialTheme.typography.headlineSmall
                     )
-                    Spacer(Modifier.height(5.dp))
+                    Spacer(Modifier.height(6.dp))
                     Text(
-                        "当前优先把手机端体验做好；后台服务保持可选，不阻塞核心 App。",
-                        style = MaterialTheme.typography.bodyMedium
+                        "Give me a goal. I can understand it, plan the work, use available tools, and verify the result.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                    Spacer(Modifier.height(14.dp))
-                    Button(
+                    Spacer(Modifier.height(18.dp))
+                    OutlinedButton(
                         onClick = onOpenChat,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(vertical = 14.dp)
                     ) {
-                        Text("开始任务 / AI 对话")
+                        Icon(Icons.Default.SmartToy, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text("Start a task")
+                        Spacer(Modifier.weight(1f))
+                        Icon(Icons.Default.ArrowForward, contentDescription = null)
                     }
                 }
             }
         }
 
-        item {
-            Text("快速入口", style = MaterialTheme.typography.titleLarge)
-        }
+        item { Text("Quick actions", style = MaterialTheme.typography.titleLarge) }
 
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                QuickAction(
-                    title = "AI 对话",
-                    subtitle = "Chat",
+                ActionCard(
+                    title = "AI Chat",
+                    icon = Icons.Default.SmartToy,
                     modifier = Modifier.weight(1f),
                     onClick = onOpenChat
                 )
-                QuickAction(
-                    title = "Skills",
-                    subtitle = "能力",
+                ActionCard(
+                    title = "Web Research",
+                    icon = Icons.Default.Language,
                     modifier = Modifier.weight(1f),
-                    onClick = {
-                        onOpenFeature(NexusFeature.SKILLS)
-                    }
+                    onClick = { onOpenFeature(NexusFeature.WEB_RESEARCH) }
                 )
             }
         }
 
-        item {
-            Text("能力中心", style = MaterialTheme.typography.titleLarge)
-        }
+        item { Text("Agent capabilities", style = MaterialTheme.typography.titleLarge) }
 
         items(NexusFeature.entries) { feature ->
-            FeatureCard(feature = feature, onClick = { onOpenFeature(feature) })
+            CapabilityRow(feature, onClick = { onOpenFeature(feature) })
         }
     }
 }
 
 @Composable
-private fun QuickAction(
+private fun ActionCard(
     title: String,
-    subtitle: String,
-    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier,
     onClick: () -> Unit
 ) {
-    OutlinedButton(
+    Card(
+        modifier = modifier.height(92.dp),
         onClick = onClick,
-        modifier = modifier.height(76.dp),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+        shape = RoundedCornerShape(20.dp)
     ) {
-        Column {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
 
 @Composable
-private fun FeatureCard(feature: NexusFeature, onClick: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+private fun CapabilityRow(feature: NexusFeature, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        shape = RoundedCornerShape(18.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            Text(feature.symbol, style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.size(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(
-                    "${feature.symbol}  ${feature.title}",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(Modifier.height(3.dp))
+                Text(feature.title, style = MaterialTheme.typography.titleMedium)
                 Text(
                     feature.description,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            OutlinedButton(onClick = onClick) {
-                Text("打开")
-            }
+            Icon(
+                Icons.Default.ArrowForward,
+                contentDescription = "Open ${feature.title}",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
