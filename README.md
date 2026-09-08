@@ -2,6 +2,14 @@
 
 基于 **Android + Kotlin + Jetpack Compose + Google Gemini API** 的移动端 AI 智能助手项目。
 
+> **独立项目声明 / Independence Notice**
+>
+> Nexus AI 是一个独立开发的个人项目，**与 Marvis AI、MyNexusAI（https://app.mynexusai.com/）及其运营方、开发者或相关品牌不存在官方关联、合作、授权或隶属关系**。
+>
+> 本项目在产品设计与技术探索过程中，可能参考公开可见的 AI Agent、移动端 AI 助手及相关产品的通用设计理念；这不代表复制其专有代码、资产、品牌或未公开技术，也不代表得到相关项目方的认可或背书。
+>
+> “Marvis AI”、“MyNexusAI”及其他第三方名称、商标和产品标识归其各自权利人所有。本项目不使用这些名称作为自己的产品名称或品牌标识。
+
 ## ✨ 核心特性
 
 - 🧠 Gemini AI 对话能力，并支持无有效 API Key 时的本地自主引擎回退
