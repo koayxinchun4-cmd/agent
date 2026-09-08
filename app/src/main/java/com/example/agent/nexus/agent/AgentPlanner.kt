@@ -1,8 +1,8 @@
 package com.example.agent.nexus.agent
 
 /**
- * First deterministic planner. It deliberately avoids hidden model reasoning
- * and keeps tool selection small until the real model router is connected.
+ * Deterministic planner. Tool selection stays explicit so each execution path
+ * is inspectable and can later be replaced by model-assisted planning.
  */
 class AgentPlanner {
     fun plan(task: AgentTask, availableToolIds: Set<String> = emptySet()): AgentPlan {
@@ -13,6 +13,7 @@ class AgentPlanner {
                 "web_research".takeIf(availableToolIds::contains)
             "文件" in task.input || "file" in input ->
                 "file_agent".takeIf(availableToolIds::contains)
+            "local_task" in availableToolIds -> "local_task"
             else -> null
         }
 
