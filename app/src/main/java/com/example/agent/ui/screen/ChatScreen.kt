@@ -181,7 +181,7 @@ private fun ChatComposer(
         OutlinedTextField(
             value = inputText,
             onValueChange = onInputChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(0.78f),
             placeholder = { Text("告诉 Nexus 你的目标…") },
             enabled = !isSending,
             maxLines = 4,
