@@ -1,155 +1,74 @@
-# Nexus AI — Project Status 33 Records
+# Nexus AI — Project Status Records
 
-> Status snapshot: 2026-09-08
+> Status snapshot: 2026-09-09
 >
-> Purpose: preserve the 33 core decisions, capabilities, history items, constraints, and current engineering status discussed during the Nexus AI rebuild. This document is a project record, not a claim that every listed feature is already implemented.
+> Purpose: preserve the core decisions, capabilities, history items, constraints, cleanup records, and current engineering direction discussed during the Nexus AI rebuild. This document is a project record, not a claim that every listed feature is already implemented.
 
-## 1. Product identity
-Nexus AI is an independent, open-source Android AI Agent project. It should have its own product identity and UI rather than copying another product's interface.
+## 1–35. Core product, architecture, history, and backlog
 
-## 2. Platform
-Primary target is native Android, Kotlin + Jetpack Compose, phone-first, without requiring root access.
+The original 1–35 records remain unchanged in substance:
 
-## 3. Regional language direction
-The product is designed for Malaysia-first usage, including Traditional/Simplified Chinese where appropriate, Bahasa Melayu, English, and mixed Malaysian communication.
+- Product identity: independent open-source Android AI Agent.
+- Platform: native Android, Kotlin + Jetpack Compose, phone-first, no root.
+- Malaysia-first multilingual direction.
+- Modern visible Agent product experience.
+- Original Nexus UI; no copying proprietary UI/code/assets.
+- Home, Chat, and Agent Task UI direction.
+- Agent Core and Agent Loop v1.
+- Gemini, OpenRouter, and local fallback model strategy.
+- Historical specialist/CTO/Codex-style capabilities.
+- Nexus Agent Studio / Agent Workspace direction.
+- Skills registry/parser/import and provenance policy.
+- Room-backed Memory and Chat persistence.
+- GitHub and GitHub Actions/CI/CD history.
+- WhatsApp automation history marked RECOVER/FUTURE.
+- Planned File Agent, App Agent, Web Research, notifications/system integration, and voice.
+- APK/storage strategy.
+- AI Moments / AI 朋友圈 future product layer.
+- Backend postponed and optional.
+- Independence/legal/contribution rules.
+- GPLv3 direction.
+- Frontend-first engineering priority.
+- Live CI verification rule.
+- Hybrid Cloud / Server File Analysis — PLANNED.
+- Network Security & Online Platform Integration — PLANNED, including future Bilibili, REDnote/Xiaohongshu, and Zhihu research/integration.
 
-## 4. Agent product experience
-The frontend should feel like a modern personal AI Agent: a clear home screen, task entry, visible progress, tools, verification, and completion states.
+For the detailed historical wording, see the project history/report documents and `docs/NEXUS_PROJECT_MEMORY.md`.
 
-## 5. UI originality
-Marvis AI may be used only as a high-level product-experience reference. Nexus must not copy proprietary code, logos, assets, or an exact visual layout.
+## 36. Repository hygiene / build garbage cleanup — CURRENT
 
-## 6. Home screen direction
-The current frontend direction includes Nexus branding, Ready status, a prominent task-entry card, quick actions, and an Agent capabilities list.
+The repository was cleaned of generated or machine-local files that were being tracked:
 
-## 7. Chat screen direction
-The chat frontend includes a Nexus Chat header, status indicator, message bubbles, auto-scroll, suggestion chips, text composer, send state, and history clearing.
+- `.gradle/`
+- root `build/`
+- `app/build/`
+- `local.properties`
 
-## 8. Agent workflow visualization
-Future task UI should expose the Agent workflow concept: understand request → plan → use tool → verify → retry when needed → complete.
+`.gitignore` was strengthened to prevent these and related local outputs from returning:
 
-## 9. Agent Core foundation
-The project has an Agent Core foundation containing AgentTask, AgentResult, AgentTool, ToolResult, ToolRegistry, AgentPlan, AgentPlanner, ModelRouter, NexusAgent, AgentExecution, AgentVerifier, and loop configuration.
+- `.gradle/`
+- `**/build/`
+- `local.properties`
+- `.idea/`
+- `*.iml`
+- `*.apk`
+- `*.aab`
+- `.env`
+- `.DS_Store`
 
-## 10. Agent loop
-Agent Loop v1 follows planner → model route → tool execution → verification → retry/failure handling. Re-planning from failure context is intentionally not yet implemented.
+This cleanup removes reproducible run/build garbage, not Nexus source code or useful historical functionality.
 
-## 11. Model abstraction
-The project is designed to support Gemini, OpenRouter, and a local/on-device fallback rather than depending on one provider.
+## 37. Canonical project memory — CURRENT
 
-## 12. Gemini
-Gemini API integration was fixed from the obsolete model endpoint to the `v1beta` generateContent flow using a supported Gemini model configuration, with error handling.
+`docs/NEXUS_PROJECT_MEMORY.md` is now the durable project-memory reference. It separates:
 
-## 13. OpenRouter
-OpenRouter remains part of the multi-model direction, historically using `openrouter/auto` as the default routing choice.
+- long-term product/architecture decisions
+- historical capabilities to preserve/recover
+- security/licensing principles
+- frontend-first priorities
+- repository hygiene rules
 
-## 14. Local fallback
-When external model configuration is unavailable, Nexus should retain a local/autonomous fallback path rather than making the app unusable.
-
-## 15. Specialist presets
-Historical local presets include CTO.new-style architecture/engineering assistance and coding/Codex-style tasks. These capabilities should be preserved or reintroduced through the Agent architecture.
-
-## 16. CTO.new / coding capability
-The historical project direction includes architecture design, technology selection, module planning, code review, sprint planning, Kotlin/Compose coding assistance, debugging, and code improvement.
-
-## 17. Agent Studio
-The historical Office Agent Studio direction is being transformed into a Nexus Agent Studio / Agent Workspace concept for multi-agent tasks, workflows, GitHub work, and custom tasks.
-
-## 18. Skills
-Nexus should support a Skill registry and Skill parser/import workflow, including extraction of GitHub `SKILL.md`-style definitions where rights and licensing permit.
-
-## 19. Skills provenance
-Third-party Skills should record source repository/path, commit or version, author, license, import date, modification status, Nexus changes, and removal status when practical. No unverified third-party Skill inventory should be presented as confirmed open source.
-
-## 20. Skills removal policy
-If an original Skill developer requests removal through a GitHub Issue and provides enough information to identify the Skill and their rights/concern, Nexus should conduct a good-faith review and remove or replace the material when it is not clearly licensed or the supported request is reasonable.
-
-## 21. Memory
-Room-backed conversation history and AgentMemory are part of the architecture. Memory should support useful context without turning private user/business/chat data into public project data.
-
-## 22. Chat persistence
-ChatSession and related local history functionality should be preserved while the frontend and Agent architecture are refactored.
-
-## 23. GitHub integration
-The historical feature set includes repository access, branches, file content, pull requests, issues, issue comments/updates, GitHub account information, and an OAuth/device-flow direction.
-
-## 24. GitHub Actions / CI/CD
-Historical Office Agent Studio functionality included CI/CD workflow concepts such as build, test, artifact, release, and GitHub Actions workflow injection. These should be recovered incrementally after the frontend foundation is stable.
-
-## 25. WhatsApp automation history
-The historical project included WhatsApp Cloud API, sending messages, phone number/access/verification configuration, webhook configuration, and a Gemini + GitHub + WhatsApp automation bridge. Parts were later removed during security/bug cleanup; classify this history as RECOVER/FUTURE rather than assuming it is currently implemented.
-
-## 26. Mobile Agent capabilities
-Planned mobile abilities include File Agent, App Agent, web research, notification/system integration, and voice. Android SDK/Intent/Storage Access Framework should be preferred; Accessibility requires explicit user authorization; root/private APIs are not required.
-
-## 27. Storage strategy
-The core APK should remain reasonable in size. App data can hold chat history, memory, skills, downloaded assets, and user files. Large optional local models/assets should not be embedded in the core APK by default.
-
-## 28. AI Moments / AI 朋友圈
-AI Moments and AI 朋友圈 are product-experience ideas for later phases, not reasons to block the current frontend foundation.
-
-## 29. Backend direction
-The Android frontend is currently the priority. Python/FastAPI backend work is postponed and should remain optional/future rather than a core dependency of the current Android app.
-
-## 30. Legal / independence / contribution rules
-Nexus is explicitly independent from Marvis AI, MyNexusAI, and `https://app.mynexusai.com/`. The project welcomes contributors, requires preservation of applicable notices, and should not copy proprietary code/assets/unpublished material or misrepresent affiliation.
-
-## 31. License direction
-Nexus uses GPLv3 as the project license direction. GPLv3 governs distribution of covered code; it does not automatically make a user's private/business/chat data public to the original developer. Contributors and forks remain responsible for applicable copyright, license, and other legal obligations.
-
-## 32. Frontend-first engineering priority
-The current engineering priority is: stabilize Android frontend/UI and CI first, then continue Agent Task UI and backend/advanced integrations later. Existing useful historical functionality must not be accidentally deleted during refactoring.
-
-## 33. Current CI status and recovery rule
-The project should only declare CI green after the actual GitHub Actions run reports success. The recovery rule is: inspect the actual failing workflow/job/log, fix the concrete error, rerun, and verify success before continuing.
-
----
-
-## Follow-up development backlog
-
-### 34. Hybrid Cloud / Server File Analysis — PLANNED
-Nexus should later support an optional cloud/server analysis path for tasks that benefit from backend compute, such as large files, complex document processing, Python/data analysis, long-running Agent tasks, or larger server-side models.
-
-Design direction:
-- **Local-first by default**: ordinary/private files should remain on-device when practical.
-- **Explicit user consent** before a file is uploaded to a server.
-- Clearly communicate what is uploaded, where it goes, retention/deletion behavior, and relevant privacy implications.
-- Use HTTPS and appropriate authentication/authorization.
-- Apply file-size/type limits, safe file handling, access control, encryption, and automatic cleanup where appropriate.
-- Keep the backend optional rather than making the Android app depend on Python/FastAPI.
-- A future Hybrid Agent may route tasks between local Android tools and cloud tools based on capability, size, privacy, and user approval.
-
-Possible future flow:
-`User selects file → Nexus explains cloud requirement → user approves → secure upload → server/AI analysis → result → cleanup according to policy`
-
-This is a **future development item**, not part of the current SAF/File Agent v1 implementation.
-
-### 35. Network Security & Online Platform Integration — PLANNED
-Nexus should later develop a dedicated network-security and safe-online-integration layer for interacting with public internet services and platforms such as **Bilibili (哔哩哔哩), REDnote / Xiaohongshu (小红书), and Zhihu (知乎)**.
-
-Scope to study and design:
-- HTTPS/TLS and secure network communication.
-- API-first integration where an official API or supported integration exists.
-- Authentication, token/session handling, least-privilege access, and secure secret storage.
-- User-consent and permission boundaries before accessing accounts, content, or private data.
-- Input/output validation and safe handling of untrusted web content.
-- Rate limits, retries, timeouts, and abuse-prevention safeguards.
-- Avoid bypassing platform security, access controls, CAPTCHAs, paywalls, or other technical restrictions.
-- Respect platform terms, robots/policies where applicable, copyright, privacy, and applicable law.
-- Do not collect or upload unnecessary user data.
-- Keep credentials out of source code, logs, GitHub Issues, and Skills.
-- Prefer read-only/research capabilities before automation or posting capabilities.
-
-Potential future Agent capabilities:
-- Search/research public content.
-- Summarize or compare public posts/articles/videos.
-- Extract permitted metadata or links.
-- Optional account actions only after explicit user authorization and only through permitted/legitimate integration paths.
-
-Security principle:
-`Discover → Authenticate safely → Validate → Request minimally → Rate-limit → Handle untrusted content → Audit → Revoke/cleanup`
-
-This is a **future development item**. It does not mean Nexus currently integrates with Bilibili, REDnote/Xiaohongshu, or Zhihu.
+Transient data such as the latest CI run, current commit, temporary errors, or build output should be verified live and should not be treated as durable project memory.
 
 ## Status labels
 
@@ -161,7 +80,10 @@ This is a **future development item**. It does not mean Nexus currently integrat
 - **DEPRECATED** — should not be treated as the current implementation.
 
 ## Immediate next step
-1. Continue Android SAF → File Agent v1.
-2. Keep the current frontend/Agent Core work local-first.
-3. After the foundation is stable, evaluate Hybrid Cloud / Server File Analysis and Network Security & Online Platform Integration as separate future features.
-4. Keep backend/software-server work postponed unless it becomes necessary for a later feature.
+
+1. Continue polishing the Android frontend and Agent Task experience.
+2. Keep local-first execution and safe File Agent work as the near-term capability path.
+3. Keep the repository clean of generated build/run garbage.
+4. Keep durable project memory and project status synchronized in `docs/`.
+5. After frontend/Agent Core stabilization, continue Skills/Memory integration.
+6. Evaluate cloud/server and online-platform features later; backend remains optional/postponed.
