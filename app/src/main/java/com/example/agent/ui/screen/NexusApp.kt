@@ -9,6 +9,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,15 +31,27 @@ private enum class NexusTab(val label: String) {
 fun NexusApp(viewModel: ChatViewModel) {
     var tab by remember { mutableStateOf(NexusTab.HOME) }
     var selectedFeature by remember { mutableStateOf<NexusFeature?>(null) }
+    var showTask by remember { mutableStateOf(false) }
 
     val feature = selectedFeature
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(feature?.title ?: "Nexus 智能助手") },
+                title = {
+                    Text(
+                        when {
+                            showTask -> "Nexus Task"
+                            feature != null -> feature.title
+                            else -> "Nexus 智能助手"
+                        }
+                    )
+                },
                 navigationIcon = {
-                    if (feature != null) {
-                        androidx.compose.material3.TextButton(onClick = { selectedFeature = null }) {
+                    if (showTask || feature != null) {
+                        TextButton(onClick = {
+                            showTask = false
+                            selectedFeature = null
+                        }) {
                             Text("返回")
                         }
                     }
@@ -49,8 +62,9 @@ fun NexusApp(viewModel: ChatViewModel) {
             NavigationBar {
                 NexusTab.entries.forEach { item ->
                     NavigationBarItem(
-                        selected = tab == item && feature == null,
+                        selected = tab == item && feature == null && !showTask,
                         onClick = {
+                            showTask = false
                             selectedFeature = null
                             tab = item
                         },
@@ -63,9 +77,11 @@ fun NexusApp(viewModel: ChatViewModel) {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             when {
+                showTask -> TaskScreen(onBack = { showTask = false })
                 feature != null -> NexusFeatureScreen(feature)
                 tab == NexusTab.HOME -> NexusHomeScreen(
                     onOpenChat = { tab = NexusTab.CHAT },
+                    onStartTask = { showTask = true },
                     onOpenFeature = { selectedFeature = it }
                 )
                 tab == NexusTab.CHAT -> ChatScreen(viewModel)
