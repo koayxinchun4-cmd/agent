@@ -114,6 +114,7 @@ fun TaskScreen(
                 TaskUiState.Idle -> null
             }
             val progress = (uiState as? TaskUiState.Running)?.progress
+            val liveSteps = progress?.steps.orEmpty()
             val taskText = when (val state = uiState) {
                 is TaskUiState.Running -> state.task.input
                 is TaskUiState.Completed -> state.task.input
@@ -123,11 +124,19 @@ fun TaskScreen(
 
             TaskSummary(taskText, uiState)
             Text("Agent workflow", style = MaterialTheme.typography.titleLarge)
-            taskSteps(execution, progress).forEachIndexed { index, step ->
-                TaskStepCard(step, isLast = index == taskSteps(execution, progress).lastIndex)
+            val workflowSteps = taskSteps(execution, progress)
+            workflowSteps.forEachIndexed { index, step ->
+                TaskStepCard(step, isLast = index == workflowSteps.lastIndex)
             }
 
             CurrentAction(execution, progress, uiState)
+
+            if (running && liveSteps.isNotEmpty()) {
+                Text("Live execution", style = MaterialTheme.typography.titleMedium)
+                liveSteps.takeLast(3).forEach { step ->
+                    LiveStepRow(step)
+                }
+            }
 
             if (finished) {
                 val resultText = when (val state = uiState) {
@@ -177,7 +186,7 @@ private fun TaskSummary(text: String, state: TaskUiState) {
 }
 
 private fun taskSteps(execution: AgentExecution?, progress: AgentProgress?): List<TaskStep> {
-    val steps = execution?.steps.orEmpty()
+    val steps = execution?.steps.orEmpty().ifEmpty { progress?.steps.orEmpty() }
     val liveStep = progress?.step?.step
     val has = { name: String -> steps.any { it.step == name || it.step.startsWith(name) } }
     val failed = { name: String ->
@@ -245,6 +254,21 @@ private fun CurrentAction(execution: AgentExecution?, progress: AgentProgress?, 
                 Spacer(Modifier.height(6.dp))
                 Text(it.step.output, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+        }
+    }
+}
+
+@Composable
+private fun LiveStepRow(step: AgentStepResult) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(if (step.success) "✓" else "!", style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.size(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(step.step, style = MaterialTheme.typography.bodyMedium)
+            Text(step.output, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
