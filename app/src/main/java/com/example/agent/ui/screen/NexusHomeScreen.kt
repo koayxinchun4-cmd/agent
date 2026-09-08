@@ -18,10 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -61,7 +57,7 @@ fun NexusHomeScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Default.AutoAwesome,
+                            Icons.Default.ArrowForward,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
@@ -114,8 +110,6 @@ fun NexusHomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         contentPadding = PaddingValues(vertical = 14.dp)
                     ) {
-                        Icon(Icons.Default.SmartToy, contentDescription = null)
-                        Spacer(Modifier.size(8.dp))
                         Text("Start a task")
                         Spacer(Modifier.weight(1f))
                         Icon(Icons.Default.ArrowForward, contentDescription = null)
@@ -133,13 +127,13 @@ fun NexusHomeScreen(
             ) {
                 ActionCard(
                     title = "AI Chat",
-                    icon = Icons.Default.SmartToy,
+                    icon = Icons.Default.ArrowForward,
                     modifier = Modifier.weight(1f),
                     onClick = onOpenChat
                 )
                 ActionCard(
                     title = "Web Research",
-                    icon = Icons.Default.Language,
+                    icon = Icons.Default.ArrowForward,
                     modifier = Modifier.weight(1f),
                     onClick = { onOpenFeature(NexusFeature.WEB_RESEARCH) }
                 )
