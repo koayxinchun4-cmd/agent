@@ -3,7 +3,6 @@ package com.example.agent.data.repository
 import com.example.agent.BuildConfig
 import com.example.agent.data.local.ChatDao
 import com.example.agent.data.local.ChatMessage
-import com.example.agent.data.remote.ChatContent
 import com.example.agent.data.remote.Content
 import com.example.agent.data.remote.GeminiApiService
 import com.example.agent.data.remote.GeminiRequest
