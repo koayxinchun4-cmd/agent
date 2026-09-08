@@ -54,7 +54,9 @@ fun ChatScreen(viewModel: ChatViewModel) {
         if (messages.isEmpty()) {
             EmptyChatContent(
                 onSuggestion = { inputText = it },
-                modifier = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .weight(1f)
             )
         } else {
             LazyColumn(
@@ -126,9 +128,7 @@ private fun EmptyChatContent(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .weight(1f),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Center
     ) {
         Text("Hi，我是 Nexus", style = MaterialTheme.typography.headlineSmall)
@@ -225,7 +225,7 @@ fun MessageBubble(message: ChatMessage) {
         ) {
             Text(
                 text = message.content,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                 style = MaterialTheme.typography.bodyLarge
             )
         }
