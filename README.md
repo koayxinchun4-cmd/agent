@@ -163,4 +163,24 @@ CI 会在构建过程中临时生成 `.env`，不会要求把真实 API Key 写�
 
 ## 📄 License
 
-本项目基于 Apache License 2.0 协议开源。
+本项目采用 **GNU General Public License v3.0 (GPLv3)** 开源。
+
+Nexus AI 是免费且开放源码的项目，欢迎任何人使用、研究、修改、Fork 和贡献，但所有 GPLv3-covered 代码的再发布和衍生版本都必须遵守 GPLv3 的适用条款，并保留适用的版权、许可证、署名及修改说明。
+
+### Attribution / 归属
+
+原始项目版权归 **koayxinchun4-cmd 和项目贡献者**所有。使用、Fork 或再发布 Nexus AI 的代码时，不得删除适用的原始版权和许可证声明，也不得将 Nexus AI 原作者或贡献者创作的代码虚假声称为自己独立原创。
+
+### Independent forks and data
+
+基于 Nexus AI 创建的 Fork、应用、服务和商业项目可以独立运营。其用户数据、聊天记录、文件、业务数据、内容、运营行为和其他独立产生的数据，不会仅因为使用 Nexus AI 就自动成为 Nexus AI 项目的数据，也不会自动要求向 Nexus AI 原项目公开。
+
+这些独立项目及其运营行为不代表 Nexus AI 或其原作者、贡献者；除非另有明确书面说明，Nexus AI 项目不对第三方 Fork、应用、服务或其数据与行为背书或承担责任。
+
+完整许可证说明请参阅仓库中的 `LICENSE` 文件及 GNU GPLv3 官方文本。
+
+## 🤝 Community
+
+**Nexus AI is free and open source — everyone is welcome to join us. ❤️**
+
+欢迎提交 Issue、Pull Request、功能建议、Bug 修复和新的 Agent / Skill。贡献请先阅读 `CONTRIBUTING.md`。
