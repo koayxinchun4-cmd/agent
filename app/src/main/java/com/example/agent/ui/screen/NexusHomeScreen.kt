@@ -35,6 +35,7 @@ import com.example.agent.nexus.NexusFeature
 @Composable
 fun NexusHomeScreen(
     onOpenChat: () -> Unit,
+    onStartTask: () -> Unit,
     onOpenFeature: (NexusFeature) -> Unit
 ) {
     LazyColumn(
@@ -106,7 +107,7 @@ fun NexusHomeScreen(
                     )
                     Spacer(Modifier.height(18.dp))
                     OutlinedButton(
-                        onClick = onOpenChat,
+                        onClick = onStartTask,
                         modifier = Modifier.fillMaxWidth(),
                         contentPadding = PaddingValues(vertical = 14.dp)
                     ) {
