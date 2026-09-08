@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -28,29 +30,94 @@ fun NexusHomeScreen(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Text("Nexus 智能助手", style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "你的纯手机 AI Agent · 不需要电脑 · 不需要 Root",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(Modifier.height(16.dp))
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Team Leader", style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.height(6.dp))
-                    Text("告诉 Nexus 你的目标，由 Agent Core 负责理解、规划、调用技能并汇报结果。")
-                    Spacer(Modifier.height(12.dp))
-                    Button(onClick = onOpenChat, modifier = Modifier.fillMaxWidth()) {
+            Column {
+                Text(
+                    "Nexus",
+                    style = MaterialTheme.typography.headlineLarge
+                )
+                Text(
+                    "你的手机 AI Agent",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "理解目标、规划任务、调用工具，并在需要时验证与重试。",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Agent Core", style = MaterialTheme.typography.titleLarge)
+                        AssistChip(
+                            onClick = {},
+                            label = { Text("Online") }
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Plan → Tool → Verify → Retry",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(Modifier.height(5.dp))
+                    Text(
+                        "当前优先把手机端体验做好；后台服务保持可选，不阻塞核心 App。",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    Button(
+                        onClick = onOpenChat,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text("开始任务 / AI 对话")
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+        }
+
+        item {
+            Text("快速入口", style = MaterialTheme.typography.titleLarge)
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                QuickAction(
+                    title = "AI 对话",
+                    subtitle = "Chat",
+                    modifier = Modifier.weight(1f),
+                    onClick = onOpenChat
+                )
+                QuickAction(
+                    title = "Skills",
+                    subtitle = "能力",
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        onOpenFeature(NexusFeature.SKILLS)
+                    }
+                )
+            }
+        }
+
+        item {
             Text("能力中心", style = MaterialTheme.typography.titleLarge)
         }
 
@@ -61,13 +128,42 @@ fun NexusHomeScreen(
 }
 
 @Composable
+private fun QuickAction(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(76.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Column {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
 private fun FeatureCard(feature: NexusFeature, onClick: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(14.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        ) {
             Column(Modifier.weight(1f)) {
-                Text("[${feature.symbol}]  ${feature.title}", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "${feature.symbol}  ${feature.title}",
+                    style = MaterialTheme.typography.titleMedium
+                )
                 Spacer(Modifier.height(3.dp))
-                Text(feature.description, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    feature.description,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
             OutlinedButton(onClick = onClick) {
                 Text("打开")
