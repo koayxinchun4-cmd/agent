@@ -20,10 +20,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.agent.nexus.NexusFeature
 
-private enum class NexusTab(val label: String) {
-    HOME("首页"),
-    CHAT("对话"),
-    MORE("更多")
+private enum class NexusTab(val labelZh: String, val labelEn: String, val labelMs: String) {
+    HOME("首页", "Home", "Utama"),
+    CHAT("对话", "Chat", "Sembang"),
+    MORE("更多", "More", "Lagi")
+}
+
+private fun NexusTab.label(language: NexusLanguage): String = when (language) {
+    NexusLanguage.CHINESE -> labelZh
+    NexusLanguage.ENGLISH -> labelEn
+    NexusLanguage.MALAY -> labelMs
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,6 +41,8 @@ fun NexusApp(
     var tab by remember { mutableStateOf(NexusTab.HOME) }
     var selectedFeature by remember { mutableStateOf<NexusFeature?>(null) }
     var showTask by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    var language by remember { mutableStateOf(NexusLanguage.ENGLISH) }
 
     val feature = selectedFeature
     Scaffold(
@@ -43,43 +51,68 @@ fun NexusApp(
                 title = {
                     Text(
                         when {
+                            showSettings -> when (language) {
+                                NexusLanguage.CHINESE -> "设置"
+                                NexusLanguage.ENGLISH -> "Settings"
+                                NexusLanguage.MALAY -> "Tetapan"
+                            }
                             showTask -> "Nexus Task"
                             feature != null -> feature.title
-                            else -> "Nexus 智能助手"
+                            else -> "Nexus"
                         }
                     )
                 },
                 navigationIcon = {
-                    if (showTask || feature != null) {
+                    if (showSettings || showTask || feature != null) {
                         TextButton(onClick = {
+                            showSettings = false
                             showTask = false
                             selectedFeature = null
                         }) {
-                            Text("返回")
+                            Text(
+                                when (language) {
+                                    NexusLanguage.CHINESE -> "返回"
+                                    NexusLanguage.ENGLISH -> "Back"
+                                    NexusLanguage.MALAY -> "Kembali"
+                                }
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    if (!showSettings && !showTask && feature == null) {
+                        TextButton(onClick = { showSettings = true }) {
+                            Text("⚙")
                         }
                     }
                 }
             )
         },
         bottomBar = {
-            NavigationBar {
-                NexusTab.entries.forEach { item ->
-                    NavigationBarItem(
-                        selected = tab == item && feature == null && !showTask,
-                        onClick = {
-                            showTask = false
-                            selectedFeature = null
-                            tab = item
-                        },
-                        icon = { Text(item.label.take(1)) },
-                        label = { Text(item.label) }
-                    )
+            if (!showSettings) {
+                NavigationBar {
+                    NexusTab.entries.forEach { item ->
+                        NavigationBarItem(
+                            selected = tab == item && feature == null && !showTask,
+                            onClick = {
+                                showTask = false
+                                selectedFeature = null
+                                tab = item
+                            },
+                            icon = { Text(item.label(language).take(1)) },
+                            label = { Text(item.label(language)) }
+                        )
+                    }
                 }
             }
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             when {
+                showSettings -> NexusSettingsScreen(
+                    language = language,
+                    onLanguageSelected = { language = it }
+                )
                 showTask -> TaskScreen(
                     onBack = { showTask = false },
                     viewModel = taskViewModel
