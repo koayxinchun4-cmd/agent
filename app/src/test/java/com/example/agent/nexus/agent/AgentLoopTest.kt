@@ -39,7 +39,7 @@ class AgentLoopTest {
         assertTrue(execution.result is AgentResult.Success)
         assertEquals(2, execution.attempts)
         assertEquals(2, tool.calls)
-        assertTrue(execution.steps.any { it.output.contains("准备重试") })
+        assertTrue(execution.steps.any { it.output.contains("retrying") })
     }
 
     @Test
@@ -56,7 +56,7 @@ class AgentLoopTest {
         assertTrue(execution.result is AgentResult.Failure)
         assertEquals(2, execution.attempts)
         assertEquals(2, tool.calls)
-        assertTrue(execution.steps.any { it.output.contains("已达到最大尝试次数") })
+        assertTrue(execution.steps.any { it.output.contains("maximum attempts reached") })
     }
 
     @Test
@@ -73,7 +73,7 @@ class AgentLoopTest {
         assertTrue(execution.result is AgentResult.Success)
         assertEquals(2, execution.attempts)
         assertEquals(2, tool.calls)
-        assertTrue(execution.steps.any { it.output.contains("工具返回了空结果") })
+        assertTrue(execution.steps.any { it.output.contains("工具返回了空結果") })
     }
 
     @Test
