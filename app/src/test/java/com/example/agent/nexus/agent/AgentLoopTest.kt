@@ -73,7 +73,7 @@ class AgentLoopTest {
         assertTrue(execution.result is AgentResult.Success)
         assertEquals(2, execution.attempts)
         assertEquals(2, tool.calls)
-        assertTrue(execution.steps.any { it.output.contains("工具返回了空結果") })
+        assertTrue(execution.steps.any { it.output.contains("工具返回了空结果") })
     }
 
     @Test
