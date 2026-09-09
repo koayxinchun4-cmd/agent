@@ -13,18 +13,19 @@ class SkillRegistry(
         .firstOrNull { it.parentFile?.name == id }
         ?.let { runCatching { read(it) }.getOrNull() }
 
-    fun import(id: String, content: String): SkillDocument {
+    fun install(id: String, content: String): SkillDocument {
         require(id.matches(Regex("[a-zA-Z0-9._-]+"))) { "invalid skill id" }
-        val directory = File(rootDirectory, id)
-        require(directory.canonicalFile.path.startsWith(rootDirectory.canonicalFile.path + File.separator))
+        val root = rootDirectory.canonicalFile
+        val directory = File(root, id).canonicalFile
+        require(directory.path.startsWith(root.path + File.separator))
         directory.mkdirs()
         val file = File(directory, "SKILL.md")
         file.writeText(content, Charsets.UTF_8)
         return SkillParser.parse(id, content)
     }
 
-    fun importIfMissing(id: String, content: String): SkillDocument =
-        get(id) ?: import(id, content)
+    fun installIfMissing(id: String, content: String): SkillDocument =
+        get(id) ?: install(id, content)
 
     private fun skillFiles(): List<File> = rootDirectory.listFiles()
         .orEmpty()
