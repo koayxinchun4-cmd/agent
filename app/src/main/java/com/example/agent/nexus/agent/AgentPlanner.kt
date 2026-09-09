@@ -8,8 +8,8 @@ class AgentPlanner {
     fun plan(task: AgentTask, availableToolIds: Set<String> = emptySet()): AgentPlan {
         val input = task.input.lowercase()
         val toolId = when {
-            ("開啟 app" in task.input || "打开 app" in task.input || "open app" in input || "launch app" in input) &&
-                "app_agent" in availableToolIds -> "app_agent"
+            (("開啟 app" in input || "打开 app" in input || "open app" in input || "launch app" in input) &&
+                "app_agent" in availableToolIds) -> "app_agent"
             "github" in input && "github" in availableToolIds -> "github"
             "网页" in task.input || "web" in input || "搜索" in task.input ->
                 "web_research".takeIf(availableToolIds::contains)
