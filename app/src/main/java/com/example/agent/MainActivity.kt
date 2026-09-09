@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
             assets.open("skills/android-ci-agent/SKILL.md").bufferedReader().use { it.readText() }
         }.getOrNull()
         if (bundledSkill != null) {
-            runCatching { skillRegistry.importIfMissing("android-ci-agent", bundledSkill) }
+            runCatching { skillRegistry.installIfMissing("android-ci-agent", bundledSkill) }
         }
 
         val toolRegistry = ToolRegistry(
