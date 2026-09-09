@@ -10,15 +10,15 @@ enum class NexusFeature(
     val description: String,
     val symbol: String
 ) {
-    CHAT("AI 对话", "与 Nexus 对话、保存历史并继续上下文", "AI"),
-    WEB_RESEARCH("Web Research", "搜索网页、整理资料并生成摘要", "WEB"),
-    FILE_AGENT("手机文件", "整理、分类和管理你授权的手机文件", "FILE"),
-    APP_AGENT("App Agent", "通过 Android 正规能力协助操作 App", "APP"),
-    SKILLS("Skills 技能", "安装、管理和组合可复用的 Agent 技能", "SKILL"),
-    MEMORY("长期记忆", "保存用户主动授权的偏好与重要上下文", "MEM"),
-    AI_MOMENTS("AI Moments", "记录 Agent 的任务进度、结果和精彩时刻", "MOMENT"),
-    OFFICE("Office Agent", "处理学习与办公资料、文档和任务", "DOC"),
-    GITHUB("GitHub / Codex", "查看仓库、Issues、PR 并辅助编程", "CODE"),
-    VOICE("语音助手", "语音输入与语音播报", "VOICE"),
-    COMMUNITY("AI 朋友圈", "浏览和分享安全的 AI 创作与 Agent Moments", "SOCIAL")
+    CHAT("AI Chat", "Chat with Nexus, keep history, and continue context", "AI"),
+    WEB_RESEARCH("Web Research", "Search the web, organize sources, and create summaries", "WEB"),
+    FILE_AGENT("File Agent", "Organize, classify, and manage user-authorized phone files", "FILE"),
+    APP_AGENT("App Agent", "Assist with apps through supported Android capabilities", "APP"),
+    SKILLS("Skills", "Install, manage, and compose reusable Agent skills", "SKILL"),
+    MEMORY("Memory", "Store user-authorized preferences and important context", "MEM"),
+    AI_MOMENTS("AI Moments", "Record Agent task progress, results, and memorable moments", "MOMENT"),
+    OFFICE("Office Agent", "Work with study and office documents and tasks", "DOC"),
+    GITHUB("GitHub / Codex", "View repositories, Issues, PRs, and assist with coding", "CODE"),
+    VOICE("Voice Assistant", "Provide voice input and spoken responses", "VOICE"),
+    COMMUNITY("AI Community", "Browse and share safe AI creations and Agent Moments", "SOCIAL")
 }
