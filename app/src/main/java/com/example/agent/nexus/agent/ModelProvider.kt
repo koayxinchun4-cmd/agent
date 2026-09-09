@@ -26,7 +26,7 @@ class ModelProviderRegistry(
     fun get(route: ModelRoute): ModelProvider? = providersByRoute[route]
 
     fun availableRoutes(): Set<ModelRoute> =
-        providers.values.filter { it.isAvailable }.map { it.route }.toSet()
+        providersByRoute.values.filter { it.isAvailable }.map { it.route }.toSet()
 }
 
 /**
@@ -45,6 +45,6 @@ class LocalModelProvider : ModelProvider {
         } else {
             "Nexus received this task and is ready to execute it:\n\n$normalized"
         }
-        return ModelResponse(text = text, providerId = id, route = route)
+        return ModelResponse(text = text, providerId = id, route = ModelRoute.Local)
     }
 }
