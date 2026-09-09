@@ -23,6 +23,7 @@ import com.example.agent.ui.screen.TaskViewModel
 import com.example.agent.ui.theme.AgentTheme
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,9 +44,7 @@ class MainActivity : ComponentActivity() {
             db.chatDao(),
             retrofit.create(GeminiApiService::class.java)
         )
-        val skillRegistry = SkillRegistry(java.io.File(filesDir, "skills")).also { itRoot ->
-            itRoot.javaClass
-        }
+        val skillRegistry = SkillRegistry(File(filesDir, "skills"))
         val toolRegistry = ToolRegistry(
             listOf(
                 LocalTaskTool(),
