@@ -11,8 +11,11 @@ import com.example.agent.data.local.AppDatabase
 import com.example.agent.data.remote.GeminiApiService
 import com.example.agent.data.repository.ChatRepository
 import com.example.agent.nexus.agent.NexusAgent
+import com.example.agent.nexus.skill.SkillRegistry
 import com.example.agent.nexus.tool.LocalFileTool
 import com.example.agent.nexus.tool.LocalTaskTool
+import com.example.agent.nexus.tool.MemoryTool
+import com.example.agent.nexus.tool.SkillTool
 import com.example.agent.nexus.tool.ToolRegistry
 import com.example.agent.ui.screen.ChatViewModel
 import com.example.agent.ui.screen.NexusApp
@@ -29,7 +32,7 @@ class MainActivity : ComponentActivity() {
             applicationContext,
             AppDatabase::class.java,
             "nexus-db"
-        ).build()
+        ).addMigrations(AppDatabase.MIGRATION_1_2).build()
 
         val retrofit = Retrofit.Builder()
             .baseUrl("https://generativelanguage.googleapis.com/")
@@ -40,10 +43,15 @@ class MainActivity : ComponentActivity() {
             db.chatDao(),
             retrofit.create(GeminiApiService::class.java)
         )
+        val skillRegistry = SkillRegistry(java.io.File(filesDir, "skills")).also { itRoot ->
+            itRoot.javaClass
+        }
         val toolRegistry = ToolRegistry(
             listOf(
                 LocalTaskTool(),
-                LocalFileTool(filesDir)
+                LocalFileTool(filesDir),
+                MemoryTool(db.agentMemoryDao()),
+                SkillTool(skillRegistry)
             )
         )
         val nexusAgent = NexusAgent(toolRegistry)
