@@ -5,19 +5,24 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: android-ci-${{ github.ref }}
-  cancel-in-progress: false
+  group: android-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  verify:
+    name: Build, test, lint, and package
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -34,90 +39,78 @@ jobs:
       - name: Make Gradle Wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Create .env file with GitHub Secret
-        run: echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > .env
+      - name: Create local environment file
+        run: printf 'GEMINI_API_KEY=%s\n' "${{ secrets.GEMINI_API_KEY }}" > .env
+
+      - name: Run unit tests
+        run: ./gradlew :app:testDebugUnitTest --stacktrace --no-daemon
+
+      - name: Run Android lint
+        run: ./gradlew :app:lintDebug --stacktrace --no-daemon
 
       - name: Build Debug APK
         run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
 
-      - name: Upload APK artifact
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-reports
+          path: |
+            app/build/test-results/**/*.xml
+            app/build/reports/tests/**
+          if-no-files-found: ignore
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-lint-report
+          path: |
+            app/build/reports/lint-results-debug.*
+            app/build/reports/lint-results-debug/
+          if-no-files-found: ignore
+
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Prepare APK for GitHub Pages
-        run: |
-          mkdir -p public
-          cp app/build/outputs/apk/debug/app-debug.apk public/app-debug.apk
-          cat > public/index.html <<'EOF'
-          <!doctype html>
-          <html lang="en">
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>Agent APK</title>
-          </head>
-          <body>
-            <h1>Agent APK</h1>
-            <p><a href="./app-debug.apk">Download app-debug.apk</a></p>
-          </body>
-          </html>
-          EOF
+  verify-wrapper:
+    name: Verify Gradle wrapper
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Publish APK to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          github_token: ${{ github.token }}
-          publish_dir: ./public
+          java-version: '17'
+          distribution: 'temurin'
 
-      - name: Calculate semantic version
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        id: version
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-          latest_tag="$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')"
+      - name: Make Gradle Wrapper executable
+        run: chmod +x ./gradlew
 
-          if [[ -z "$latest_tag" ]]; then
-            version="1.0.0"
-          else
-            if [[ ! "$latest_tag" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-              echo "Latest release tag '$latest_tag' is not a valid semantic version (vMAJOR.MINOR.PATCH)."
-              exit 1
-            fi
+      - name: Validate Gradle wrapper
+        run: ./gradlew wrapper --gradle-version "$(grep -o 'gradle-[0-9.]*-bin.zip' gradle/wrapper/gradle-wrapper.properties | sed 's/gradle-//' | sed 's/-bin.zip//')" --stacktrace --no-daemon
 
-            major="${BASH_REMATCH[1]}"
-            minor="${BASH_REMATCH[2]}"
-            patch="${BASH_REMATCH[3]}"
-            message="${{ github.event.head_commit.message }}"
+  package-check:
+    name: Check packaged APK metadata
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download Debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug
+          path: artifacts
 
-            if [[ "$message" =~ BREAKING[[:space:]]CHANGE ]] || [[ "$message" =~ ^[^:]+!:\ |^.*!:[[:space:]] ]]; then
-              major=$((major + 1))
-              minor=0
-              patch=0
-            elif [[ "$message" =~ ^feat(\(.+\))?:[[:space:]] ]]; then
-              minor=$((minor + 1))
-              patch=0
-            else
-              patch=$((patch + 1))
-            fi
-
-            version="${major}.${minor}.${patch}"
-          fi
-
-          echo "version=v${version}" >> "$GITHUB_OUTPUT"
-          echo "Next release: v${version}"
-
-      - name: Publish APK to GitHub Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ steps.version.outputs.version }}
-        run: |
-          gh release create "$TAG_NAME" \
-            app/build/outputs/apk/debug/app-debug.apk \
-            --title "Agent $TAG_NAME" \
-            --generate-notes
+      - name: Check APK exists
+        run: test -s artifacts/app-debug.apk
