@@ -11,6 +11,7 @@ import com.example.agent.data.local.AppDatabase
 import com.example.agent.data.remote.GeminiApiService
 import com.example.agent.data.repository.ChatRepository
 import com.example.agent.nexus.agent.NexusAgent
+import com.example.agent.nexus.tool.AppAgentTool
 import com.example.agent.nexus.tool.LocalFileTool
 import com.example.agent.nexus.tool.LocalTaskTool
 import com.example.agent.nexus.tool.ToolRegistry
@@ -43,7 +44,8 @@ class MainActivity : ComponentActivity() {
         val toolRegistry = ToolRegistry(
             listOf(
                 LocalTaskTool(),
-                LocalFileTool(filesDir)
+                LocalFileTool(filesDir),
+                AppAgentTool(applicationContext)
             )
         )
         val nexusAgent = NexusAgent(toolRegistry)
