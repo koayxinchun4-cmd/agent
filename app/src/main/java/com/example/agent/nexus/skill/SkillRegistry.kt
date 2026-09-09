@@ -23,6 +23,9 @@ class SkillRegistry(
         return SkillParser.parse(id, content)
     }
 
+    fun importIfMissing(id: String, content: String): SkillDocument =
+        get(id) ?: import(id, content)
+
     private fun skillFiles(): List<File> = rootDirectory.listFiles()
         .orEmpty()
         .filter { it.isDirectory }
