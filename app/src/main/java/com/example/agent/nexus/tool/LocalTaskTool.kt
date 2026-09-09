@@ -18,11 +18,11 @@ class LocalTaskTool : AgentTool {
         }
 
         val category = when {
-            input.contains("android", ignoreCase = true) || input.contains("安卓") -> "Android"
+            input.contains("android", ignoreCase = true) -> "Android"
             input.contains("github", ignoreCase = true) -> "GitHub"
-            input.contains("代碼") || input.contains("code", ignoreCase = true) -> "Coding"
-            input.contains("文件") || input.contains("file", ignoreCase = true) -> "Files"
-            input.contains("網頁") || input.contains("web", ignoreCase = true) || input.contains("搜索") -> "Research"
+            input.contains("程式碼") || input.contains("code", ignoreCase = true) -> "Coding"
+            input.contains("檔案") || input.contains("file", ignoreCase = true) -> "Files"
+            input.contains("網頁") || input.contains("web", ignoreCase = true) || input.contains("搜尋") -> "Research"
             else -> "General"
         }
 
