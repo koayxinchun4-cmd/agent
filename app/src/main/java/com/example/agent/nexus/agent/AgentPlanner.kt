@@ -9,6 +9,11 @@ class AgentPlanner {
         val input = task.input.lowercase()
         val toolId = when {
             "github" in input && "github" in availableToolIds -> "github"
+            task.input.contains("记住") || input.contains("remember") ||
+                task.input.contains("记忆") || input.contains("memory") ||
+                task.input.contains("recall") -> "memory".takeIf(availableToolIds::contains)
+            task.input.contains("技能") || input.contains("skill") ||
+                input.contains("skills") -> "skills".takeIf(availableToolIds::contains)
             "网页" in task.input || "web" in input || "搜索" in task.input ->
                 "web_research".takeIf(availableToolIds::contains)
             "文件" in task.input || "file" in input ->
