@@ -4,14 +4,79 @@
 
 ## Study targets
 
-| Project | Main lesson for Nexus | Study status |
-|---|---|---|
-| AAswordman/Operit | Android AI Agent product breadth, tools, workspace, local/cloud agent design | STUDY |
-| JetBrains/koog | Kotlin Agent Core, tools, retries, memory, provider switching, MCP, workflows, observability | STUDY |
-| OpenClawAndroid/openclaw-android-assistant | Native Android packaging of coding-agent workflows and multi-agent UX | STUDY WITH LICENSE/PROVENANCE REVIEW |
-| NamashivayamS/Autonomous-CI-CD-Self-Healing-Agent | Failure detection → diagnosis → repair → verification → delivery | STUDY |
-| PatilShreyas/debroid | Machine-readable Android runtime debugging for AI agents | STUDY |
-| koayxinchun4-cmd/agent | Nexus itself: current architecture, implementation, CI/CD, historical recovery | PRIMARY SELF-STUDY |
+| Project | Main lesson for Nexus | Study status | Source | License observed |
+|---|---|---|---|---|
+| AAswordman/Operit | Android AI Agent product breadth, tools, workspace, local/cloud agent design | STUDY | https://github.com/AAswordman/Operit | LGPL-3.0 text observed in `LICENSE` |
+| JetBrains/koog | Kotlin Agent Core, tools, retries, memory, provider switching, MCP, workflows, observability | STUDY | https://github.com/JetBrains/koog | Apache-2.0 text observed in `LICENSE.txt` |
+| OpenClawAndroid/openclaw-android-assistant | Native Android packaging of coding-agent workflows and multi-agent UX | STUDY WITH LICENSE/PROVENANCE REVIEW | https://github.com/OpenClawAndroid/openclaw-android-assistant | MIT text observed in `LICENSE`; third-party notices referenced |
+| NamashivayamS/Autonomous-CI-CD-Self-Healing-Agent | Failure detection → diagnosis → repair → verification → delivery | STUDY | https://github.com/NamashivayamS/Autonomous-CI-CD-Self-Healing-Agent | License file not confirmed in this study pass |
+| PatilShreyas/debroid | Machine-readable Android runtime debugging for AI agents | STUDY | https://github.com/PatilShreyas/debroid | Apache-2.0 text observed in `LICENSE` |
+| koayxinchun4-cmd/agent | Nexus itself: current architecture, implementation, CI/CD, historical recovery | PRIMARY SELF-STUDY | https://github.com/koayxinchun4-cmd/agent | GPLv3 project policy |
+
+## Sources and evidence
+
+Important study claims should point back to the original public source. For the current pass, the license evidence checked directly was:
+
+- Operit `LICENSE`: LGPL v3 terms are present. Source: https://github.com/AAswordman/Operit/blob/main/LICENSE
+- Koog `LICENSE.txt`: Apache License 2.0 terms are present. Source: https://github.com/JetBrains/koog/blob/main/LICENSE.txt
+- OpenClaw Android `LICENSE`: MIT License is present and the file also points readers to `THIRD_PARTY_NOTICES.md`. Source: https://github.com/OpenClawAndroid/openclaw-android-assistant/blob/main/LICENSE
+- Debroid `LICENSE`: Apache License 2.0 terms are present. Source: https://github.com/PatilShreyas/debroid/blob/main/LICENSE
+- Self-Healing Agent README: the public README describes its self-healing workflow and setup, but this pass did not confirm a repository license file. Source: https://github.com/NamashivayamS/Autonomous-CI-CD-Self-Healing-Agent/blob/main/README.md
+
+A source link is evidence of where the observation came from; it is not permission to copy code beyond the applicable license and other rights.
+
+## Fork / Study Policy
+
+### Study is not Copy & Paste
+
+A GitHub **Fork** preserves a visible relationship to the upstream repository. It is useful when Nexus wants to:
+
+- build or modify the public project for experiments
+- run the project's own tests/CI in a separate repository namespace
+- keep a reproducible study snapshot
+- prepare changes that may later become an upstream PR
+
+A Fork is **not** treated as a Nexus-original implementation.
+
+Preferred pattern:
+
+```text
+Original project
+      ↓ GitHub Fork
+Nexus study fork
+      ↓
+Build / CI / controlled experiments
+      ↓
+Architecture notes + source attribution
+      ↓
+Nexus-native reimplementation of useful ideas
+```
+
+Do not merely download a public repository, rename it, remove attribution, and present it as Nexus code.
+
+### Recommended fork naming
+
+Use a name that makes its study purpose obvious, for example:
+
+- `Operit-study`
+- `koog-study`
+- `openclaw-android-study`
+- `self-healing-agent-study`
+- `debroid-study`
+
+The upstream project and original authors must remain clearly identified in the fork README and/or NOTICE documentation. The exact final repository name is less important than preserving the upstream Fork relationship and attribution.
+
+### When a Fork is not necessary
+
+For source reading, architecture comparison, README study, license review, and non-modifying CI/build observation, Nexus can study the original repository directly without creating a Fork.
+
+### When Fork is useful
+
+Create a study Fork before making experimental modifications to the third-party repository itself, unless the upstream project's license or repository policy says otherwise.
+
+### Notifications
+
+A Fork creates a GitHub relationship between repositories, but Nexus must not claim that a Fork guarantees an upstream author notification. Author visibility depends on GitHub notification settings and the events involved.
 
 ## Cross-project architecture map
 
