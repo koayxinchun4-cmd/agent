@@ -12,7 +12,10 @@ class NexusAgent(
     private val planner: AgentPlanner = AgentPlanner(),
     private val modelRouter: ModelRouter = ModelRouter(),
     private val verifier: AgentVerifier = AgentVerifier(),
-    private val loopConfig: AgentLoopConfig = AgentLoopConfig()
+    private val loopConfig: AgentLoopConfig = AgentLoopConfig(),
+    private val modelProviders: ModelProviderRegistry = ModelProviderRegistry(
+        listOf(LocalModelProvider())
+    )
 ) {
     suspend fun execute(task: AgentTask): AgentResult =
         executeDetailed(task).result
@@ -25,8 +28,16 @@ class NexusAgent(
             task = task,
             availableToolIds = toolRegistry.list().map { it.id }.toSet()
         )
-        val route = modelRouter.route(task, initialPlan)
-        val plan = initialPlan.copy(route = route)
+        val routedPlan = initialPlan.copy(route = modelRouter.route(task, initialPlan))
+        val provider = modelProviders.get(routedPlan.route)
+            ?.takeIf { it.isAvailable }
+            ?: modelProviders.get(ModelRoute.Local)
+
+        val plan = if (provider != null && provider.route != routedPlan.route) {
+            routedPlan.copy(route = provider.route)
+        } else {
+            routedPlan
+        }
         val steps = mutableListOf<AgentStepResult>()
 
         fun emit(step: AgentStepResult, attempt: Int = 0) {
@@ -34,19 +45,35 @@ class NexusAgent(
             onProgress(AgentProgress(step = step, attempt = attempt, steps = steps.toList()))
         }
 
-        emit(AgentStepResult("understand_request", true, "任务已理解"))
-        emit(AgentStepResult("plan", true, "已选择 ${plan.toolId ?: "直接回答"} 执行路径"))
+        emit(AgentStepResult("understand_request", true, "Request understood"))
+        emit(AgentStepResult("plan", true, "Selected ${plan.toolId ?: "direct answer"} execution path"))
 
         val toolId = plan.toolId
         if (toolId == null) {
-            val result = AgentResult.Success(
-                "任务已规划：${task.input}（模型路线：${plan.route}）"
-            )
-            emit(AgentStepResult("answer", true, result.text))
-            return AgentExecution(plan, steps, result)
+            if (provider == null) {
+                val result = AgentResult.Failure("No model provider is available")
+                emit(AgentStepResult("answer", false, result.message))
+                return AgentExecution(plan, steps, result)
+            }
+
+            return try {
+                emit(AgentStepResult("model:${provider.id}", true, "Generating response"))
+                val response = provider.generate(task.input)
+                val result = AgentResult.Success(response.text)
+                emit(AgentStepResult("verify", true, "Response generated successfully"))
+                emit(AgentStepResult("answer", true, result.text))
+                AgentExecution(plan, steps, result)
+            } catch (error: Throwable) {
+                val result = AgentResult.Failure(
+                    "Model provider failed: ${error.message ?: error::class.simpleName}",
+                    error
+                )
+                emit(AgentStepResult("answer", false, result.message))
+                AgentExecution(plan, steps, result)
+            }
         }
 
-        var lastResult: ToolResult = ToolResult.Failure("工具尚未执行")
+        var lastResult: ToolResult = ToolResult.Failure("Tool has not executed")
         var attempts = 0
 
         while (attempts < loopConfig.maxAttempts) {
@@ -58,9 +85,9 @@ class NexusAgent(
             when (val verification = verifier.verify(lastResult)) {
                 VerificationResult.Passed -> {
                     val result = AgentResult.Success(
-                        "${(lastResult as ToolResult.Success).text}\n\n[模型路线：${plan.route}]"
+                        "${(lastResult as ToolResult.Success).text}\n\n[Model route: ${plan.route}]"
                     )
-                    emit(AgentStepResult("verify", true, "验证通过"), attempts)
+                    emit(AgentStepResult("verify", true, "Verification passed"), attempts)
                     emit(AgentStepResult("answer", true, result.text), attempts)
                     return AgentExecution(plan, steps, result, attempts)
                 }
@@ -72,9 +99,9 @@ class NexusAgent(
                             "verify",
                             false,
                             if (canRetry) {
-                                "验证未通过：${verification.reason}；准备重试"
+                                "Verification failed: ${verification.reason}; retrying"
                             } else {
-                                "验证未通过：${verification.reason}；已达到最大尝试次数"
+                                "Verification failed: ${verification.reason}; maximum attempts reached"
                             }
                         ),
                         attempts
@@ -85,10 +112,10 @@ class NexusAgent(
 
         val failureMessage = when (lastResult) {
             is ToolResult.Failure -> lastResult.message
-            is ToolResult.Success -> "工具结果未通过验证"
+            is ToolResult.Success -> "Tool result did not pass verification"
         }
         val result = AgentResult.Failure(
-            "$failureMessage（模型路线：${plan.route}；尝试次数：$attempts）",
+            "$failureMessage (model route: ${plan.route}; attempts: $attempts)",
             (lastResult as? ToolResult.Failure)?.cause
         )
         emit(AgentStepResult("answer", false, result.message), attempts)
@@ -105,9 +132,4 @@ class NexusAgent(
             is ToolResult.Failure -> AgentResult.Failure(result.message, result.cause)
         }
     }
-}
-
-private fun AgentResult.toText(): String = when (this) {
-    is AgentResult.Success -> text
-    is AgentResult.Failure -> message
 }
