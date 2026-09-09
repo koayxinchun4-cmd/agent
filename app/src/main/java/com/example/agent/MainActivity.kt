@@ -45,6 +45,13 @@ class MainActivity : ComponentActivity() {
             retrofit.create(GeminiApiService::class.java)
         )
         val skillRegistry = SkillRegistry(File(filesDir, "skills"))
+        val bundledSkill = runCatching {
+            assets.open("skills/android-ci-agent/SKILL.md").bufferedReader().use { it.readText() }
+        }.getOrNull()
+        if (bundledSkill != null) {
+            runCatching { skillRegistry.importIfMissing("android-ci-agent", bundledSkill) }
+        }
+
         val toolRegistry = ToolRegistry(
             listOf(
                 LocalTaskTool(),
