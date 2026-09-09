@@ -84,21 +84,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Make Gradle Wrapper executable
-        run: chmod +x ./gradlew
-
-      - name: Validate Gradle wrapper
-        run: ./gradlew wrapper --gradle-version "$(grep -o 'gradle-[0-9.]*-bin.zip' gradle/wrapper/gradle-wrapper.properties | sed 's/gradle-//' | sed 's/-bin.zip//')" --stacktrace --no-daemon
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v2
 
   package-check:
     name: Check packaged APK metadata
