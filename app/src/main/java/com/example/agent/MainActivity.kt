@@ -11,8 +11,14 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.agent.data.local.AppDatabase
 import com.example.agent.data.remote.GeminiApiService
+import com.example.agent.data.remote.OpenRouterApiService
 import com.example.agent.data.repository.ChatRepository
+import com.example.agent.nexus.agent.GeminiModelProvider
+import com.example.agent.nexus.agent.ModelAvailability
+import com.example.agent.nexus.agent.ModelProviderRegistry
+import com.example.agent.nexus.agent.ModelRouter
 import com.example.agent.nexus.agent.NexusAgent
+import com.example.agent.nexus.agent.OpenRouterModelProvider
 import com.example.agent.nexus.skill.SkillRegistry
 import com.example.agent.nexus.tool.AppAgentTool
 import com.example.agent.nexus.tool.LocalFileTool
@@ -50,15 +56,19 @@ class MainActivity : ComponentActivity() {
             "nexus-db"
         ).addMigrations(MIGRATION_1_2).build()
 
-        val retrofit = Retrofit.Builder()
+        val geminiRetrofit = Retrofit.Builder()
             .baseUrl("https://generativelanguage.googleapis.com/")
             .addConverterFactory(MoshiConverterFactory.create())
             .build()
+        val geminiApi = geminiRetrofit.create(GeminiApiService::class.java)
 
-        val repository = ChatRepository(
-            db.chatDao(),
-            retrofit.create(GeminiApiService::class.java)
-        )
+        val openRouterRetrofit = Retrofit.Builder()
+            .baseUrl("https://openrouter.ai/api/v1/")
+            .addConverterFactory(MoshiConverterFactory.create())
+            .build()
+        val openRouterApi = openRouterRetrofit.create(OpenRouterApiService::class.java)
+
+        val repository = ChatRepository(db.chatDao(), geminiApi)
 
         val skillRegistry = SkillRegistry(File(filesDir, "skills"))
         runCatching {
@@ -77,7 +87,29 @@ class MainActivity : ComponentActivity() {
                 SkillTool(skillRegistry)
             )
         )
-        val nexusAgent = NexusAgent(toolRegistry)
+
+        val geminiProvider = GeminiModelProvider(
+            apiService = geminiApi,
+            apiKey = BuildConfig.GEMINI_API_KEY
+        )
+        val openRouterProvider = OpenRouterModelProvider(
+            apiService = openRouterApi,
+            apiKey = BuildConfig.OPENROUTER_API_KEY
+        )
+        val modelProviders = ModelProviderRegistry(
+            listOf(geminiProvider, openRouterProvider, com.example.agent.nexus.agent.LocalModelProvider())
+        )
+        val modelRouter = ModelRouter(
+            ModelAvailability(
+                geminiAvailable = geminiProvider.isAvailable,
+                openRouterAvailable = openRouterProvider.isAvailable
+            )
+        )
+        val nexusAgent = NexusAgent(
+            toolRegistry = toolRegistry,
+            modelRouter = modelRouter,
+            modelProviders = modelProviders
+        )
 
         setContent {
             AgentTheme {
