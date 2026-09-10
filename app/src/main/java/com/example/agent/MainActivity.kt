@@ -15,11 +15,14 @@ import com.example.agent.data.repository.ChatRepository
 import com.example.agent.nexus.agent.NexusAgent
 import com.example.agent.nexus.skill.SkillRegistry
 import com.example.agent.nexus.tool.AppAgentTool
+import com.example.agent.nexus.tool.GitHubTool
 import com.example.agent.nexus.tool.LocalFileTool
 import com.example.agent.nexus.tool.LocalTaskTool
 import com.example.agent.nexus.tool.MemoryTool
+import com.example.agent.nexus.tool.OfficeTool
 import com.example.agent.nexus.tool.SkillTool
 import com.example.agent.nexus.tool.ToolRegistry
+import com.example.agent.nexus.tool.WebResearchTool
 import com.example.agent.ui.screen.ChatViewModel
 import com.example.agent.ui.screen.NexusApp
 import com.example.agent.ui.screen.TaskViewModel
@@ -68,13 +71,17 @@ class MainActivity : ComponentActivity() {
             skillRegistry.installIfMissing("android-ci-agent", bundled)
         }
 
+        val officeWorkspace = File(filesDir, "office").apply { mkdirs() }
         val toolRegistry = ToolRegistry(
             listOf(
                 LocalTaskTool(),
                 LocalFileTool(filesDir),
                 AppAgentTool(applicationContext),
                 MemoryTool(db.memoryDao()),
-                SkillTool(skillRegistry)
+                SkillTool(skillRegistry),
+                WebResearchTool(),
+                OfficeTool(officeWorkspace),
+                GitHubTool()
             )
         )
         val nexusAgent = NexusAgent(toolRegistry)
