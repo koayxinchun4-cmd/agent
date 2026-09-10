@@ -1,13 +1,17 @@
 package com.example.agent.nexus.agent
 
+import com.example.agent.data.remote.Candidate
 import com.example.agent.data.remote.Content
 import com.example.agent.data.remote.GeminiApiService
 import com.example.agent.data.remote.GeminiRequest
 import com.example.agent.data.remote.GeminiResponse
 import com.example.agent.data.remote.OpenRouterApiService
+import com.example.agent.data.remote.OpenRouterChoice
+import com.example.agent.data.remote.OpenRouterMessage
 import com.example.agent.data.remote.OpenRouterRequest
 import com.example.agent.data.remote.OpenRouterResponse
-import kotlinx.coroutines.test.runTest
+import com.example.agent.data.remote.Part
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -24,7 +28,7 @@ class RemoteModelProvidersTest {
     }
 
     @Test
-    fun `gemini provider returns generated text`() = runTest {
+    fun `gemini provider returns generated text`() = runBlocking {
         val provider = GeminiModelProvider(FakeGeminiApiService("hello from gemini"), "real-gemini-key-1234567890")
 
         val response = provider.generate("hello")
@@ -35,7 +39,7 @@ class RemoteModelProvidersTest {
     }
 
     @Test
-    fun `openrouter provider returns generated text`() = runTest {
+    fun `openrouter provider returns generated text`() = runBlocking {
         val provider = OpenRouterModelProvider(
             FakeOpenRouterApiService("hello from router"),
             "real-openrouter-key-1234567890"
@@ -49,7 +53,7 @@ class RemoteModelProvidersTest {
     }
 
     @Test
-    fun `provider rejects blank prompts`() = runTest {
+    fun `provider rejects blank prompts`() = runBlocking {
         val provider = GeminiModelProvider(FakeGeminiApiService("unused"), "real-gemini-key-1234567890")
 
         val error = runCatching { provider.generate("   ") }.exceptionOrNull()
@@ -64,11 +68,7 @@ class RemoteModelProvidersTest {
             apiKey: String,
             request: GeminiRequest
         ): GeminiResponse = GeminiResponse(
-            candidates = listOf(
-                com.example.agent.data.remote.Candidate(
-                    Content(role = "model", parts = listOf(com.example.agent.data.remote.Part(text)))
-                )
-            )
+            candidates = listOf(Candidate(Content(role = "model", parts = listOf(Part(text)))))
         )
     }
 
@@ -81,11 +81,7 @@ class RemoteModelProvidersTest {
             title: String?,
             request: OpenRouterRequest
         ): OpenRouterResponse = OpenRouterResponse(
-            choices = listOf(
-                com.example.agent.data.remote.OpenRouterChoice(
-                    com.example.agent.data.remote.OpenRouterMessage("assistant", text)
-                )
-            )
+            choices = listOf(OpenRouterChoice(OpenRouterMessage("assistant", text)))
         )
     }
 }
