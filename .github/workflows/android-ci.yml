@@ -85,7 +85,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
       - name: Validate Gradle Wrapper
-        uses: gradle/wrapper-validation-action@v2
+        uses: gradle/actions/wrapper-validation@v2
 
   package-check:
     name: Check packaged APK metadata
