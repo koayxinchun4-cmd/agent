@@ -14,6 +14,7 @@ import com.example.agent.data.remote.GeminiApiService
 import com.example.agent.data.remote.OpenRouterApiService
 import com.example.agent.data.repository.ChatRepository
 import com.example.agent.nexus.agent.GeminiModelProvider
+import com.example.agent.nexus.agent.LocalModelProvider
 import com.example.agent.nexus.agent.ModelAvailability
 import com.example.agent.nexus.agent.ModelProviderRegistry
 import com.example.agent.nexus.agent.ModelRouter
@@ -97,7 +98,11 @@ class MainActivity : ComponentActivity() {
             apiKey = BuildConfig.OPENROUTER_API_KEY
         )
         val modelProviders = ModelProviderRegistry(
-            listOf(geminiProvider, openRouterProvider, com.example.agent.nexus.agent.LocalModelProvider())
+            listOf(
+                geminiProvider,
+                openRouterProvider,
+                LocalModelProvider()
+            )
         )
         val modelRouter = ModelRouter(
             ModelAvailability(
