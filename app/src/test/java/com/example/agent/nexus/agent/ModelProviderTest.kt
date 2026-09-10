@@ -9,6 +9,8 @@ import com.example.agent.data.remote.OpenRouterApiService
 import com.example.agent.data.remote.OpenRouterChoice
 import com.example.agent.data.remote.OpenRouterMessage
 import com.example.agent.data.remote.OpenRouterRequest
+import com.example.agent.data.remote.OpenRouterResponse
+import com.example.agent.data.remote.Part
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -59,7 +61,7 @@ class ModelProviderTest {
                         Candidate(
                             Content(
                                 role = "model",
-                                parts = listOf(com.example.agent.data.remote.Part("Gemini says hello"))
+                                parts = listOf(Part("Gemini says hello"))
                             )
                         )
                     )
@@ -79,7 +81,7 @@ class ModelProviderTest {
     fun `openrouter provider maps remote response into model response`() = runBlocking {
         val provider = OpenRouterModelProvider(
             apiService = FakeOpenRouterApiService(
-                OpenRouterResponse = com.example.agent.data.remote.OpenRouterResponse(
+                OpenRouterResponse(
                     choices = listOf(
                         OpenRouterChoice(
                             OpenRouterMessage(role = "assistant", content = "OpenRouter says hello")
@@ -105,11 +107,10 @@ private class FakeGeminiApiService(
 }
 
 private class FakeOpenRouterApiService(
-    private val response: com.example.agent.data.remote.OpenRouterResponse =
-        com.example.agent.data.remote.OpenRouterResponse(choices = emptyList())
+    private val response: OpenRouterResponse = OpenRouterResponse(choices = emptyList())
 ) : OpenRouterApiService {
     override suspend fun createChatCompletion(
         authorization: String,
         request: OpenRouterRequest
-    ): com.example.agent.data.remote.OpenRouterResponse = response
+    ): OpenRouterResponse = response
 }
