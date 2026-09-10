@@ -17,7 +17,8 @@ class AgentPlanner {
                 "web_research".takeIf(availableToolIds::contains)
             "文件" in task.input || "file" in input ->
                 "file_agent".takeIf(availableToolIds::contains)
-            "local_task" in availableToolIds -> "local_task"
+            ("local task" in input || "local_task" in input || "任務分析" in task.input || "任务分析" in task.input) &&
+                "local_task" in availableToolIds -> "local_task"
             else -> null
         }
 
