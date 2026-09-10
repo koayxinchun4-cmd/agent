@@ -1,0 +1,214 @@
+name: Nexus Roadmap
+
+on:
+  workflow_dispatch:
+    inputs:
+      auto_fix_attempts:
+        description: "Verification retry count (no automatic source edits are performed)"
+        required: false
+        default: "1"
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "docs/**"
+      - ".github/workflows/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradle.properties"
+      - "settings.gradle.kts"
+      - "build.gradle.kts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexus-roadmap-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  phase-1:
+    name: "Phase 1 - Nexus Foundation"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Verify foundation files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f gradlew
+          test -f settings.gradle.kts
+          test -f app/build.gradle.kts
+          test -f app/src/main/java/com/example/agent/MainActivity.kt
+          test -f app/src/main/java/com/example/agent/nexus/NexusFeature.kt
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest
+      - name: Android lint
+        run: ./gradlew :app:lintDebug
+
+  phase-2:
+    name: "Phase 2 - Real Agent"
+    needs: phase-1
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Verify Agent core
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f app/src/main/java/com/example/agent/nexus/agent/NexusAgent.kt
+          test -f app/src/main/java/com/example/agent/nexus/agent/AgentPlanner.kt
+          test -f app/src/main/java/com/example/agent/nexus/agent/AgentVerifier.kt
+          test -f app/src/main/java/com/example/agent/nexus/agent/AgentTask.kt
+          test -f app/src/main/java/com/example/agent/nexus/agent/AgentPlan.kt
+          test -f app/src/main/java/com/example/agent/nexus/model/ModelRouter.kt
+          test -f app/src/main/java/com/example/agent/nexus/tool/ToolRegistry.kt
+      - name: Agent unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+  phase-3:
+    name: "Phase 3 - Mobile Agent"
+    needs: phase-2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Verify mobile tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f app/src/main/java/com/example/agent/nexus/tool/LocalFileTool.kt
+          test -f app/src/main/java/com/example/agent/nexus/tool/AppAgentTool.kt
+          test -f app/src/main/java/com/example/agent/nexus/tool/LocalTaskTool.kt
+          test -f app/src/test/java/com/example/agent/nexus/tool/LocalFileToolTest.kt
+      - name: Mobile Agent unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+  phase-4:
+    name: "Phase 4 - Skills + Memory"
+    needs: phase-3
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Verify Skills and Memory
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f app/src/main/java/com/example/agent/nexus/skill/SkillRegistry.kt
+          test -f app/src/main/java/com/example/agent/nexus/tool/SkillTool.kt
+          test -f app/src/main/java/com/example/agent/nexus/tool/MemoryTool.kt
+          test -f app/src/main/java/com/example/agent/data/local/AgentMemory.kt
+          test -f app/src/main/java/com/example/agent/data/local/AgentMemoryDao.kt
+          test -f app/src/main/java/com/example/agent/data/local/AppDatabase.kt
+          test -f skills/github-skill-crawler/SKILL.md
+      - name: Skills and Memory unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+  phase-5:
+    name: "Phase 5 - Web / Office / GitHub"
+    needs: phase-4
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify Phase 5 implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Phase 5 requires implemented Web Research, Office Agent, and GitHub Agent capabilities."
+          echo "Documentation or workflow files alone do not count as implementation evidence."
+          web_count=$(find app/src/main -type f \( -iname '*Web*' -o -iname '*Research*' \) | wc -l)
+          office_count=$(find app/src/main -type f \( -iname '*Office*' -o -iname '*Document*' -o -iname '*Spreadsheet*' \) | wc -l)
+          github_count=$(find app/src/main -type f -iname '*GitHub*' | wc -l)
+          test "$web_count" -gt 0
+          test "$office_count" -gt 0
+          test "$github_count" -gt 0
+          echo "Web implementation files: $web_count"
+          echo "Office implementation files: $office_count"
+          echo "GitHub implementation files: $github_count"
+      - name: Phase 5 unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+  phase-6:
+    name: "Phase 6 - Nexus Experience"
+    needs: phase-5
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify AI Moments and AI Community implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Phase 6 requires implemented AI Moments and AI Community features."
+          moments_count=$(find app/src/main -type f \( -iname '*Moment*' -o -iname '*Community*' -o -iname '*Social*' \) | wc -l)
+          test "$moments_count" -gt 0
+          echo "Phase 6 implementation files: $moments_count"
+      - name: Phase 6 unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+  phase-7:
+    name: "Phase 7 - Voice + Optimization"
+    needs: phase-6
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify Voice implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Phase 7 requires implemented STT, TTS, and optimization work."
+          voice_count=$(find app/src/main -type f \( -iname '*Voice*' -o -iname '*Speech*' -o -iname '*Tts*' -o -iname '*Stt*' \) | wc -l)
+          test "$voice_count" -gt 0
+          echo "Voice implementation files: $voice_count"
+      - name: Final verification (no APK packaging)
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug
+
+  roadmap-all:
+    name: "Roadmap ALL"
+    needs:
+      - phase-1
+      - phase-2
+      - phase-3
+      - phase-4
+      - phase-5
+      - phase-6
+      - phase-7
+    runs-on: ubuntu-latest
+    steps:
+      - name: Roadmap ALL Green
+        run: echo "Nexus Roadmap Phase 1-7 are Green. APK packaging remains a separate release step."
