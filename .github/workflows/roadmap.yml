@@ -79,7 +79,7 @@ jobs:
           test -f app/src/main/java/com/example/agent/nexus/agent/AgentVerifier.kt
           test -f app/src/main/java/com/example/agent/nexus/agent/AgentTask.kt
           test -f app/src/main/java/com/example/agent/nexus/agent/AgentPlan.kt
-          test -f app/src/main/java/com/example/agent/nexus/model/ModelRouter.kt
+          test -f app/src/main/java/com/example/agent/nexus/agent/ModelRouter.kt
           test -f app/src/main/java/com/example/agent/nexus/tool/ToolRegistry.kt
       - name: Agent unit tests
         run: ./gradlew :app:testDebugUnitTest
