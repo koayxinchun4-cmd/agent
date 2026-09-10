@@ -12,7 +12,7 @@ class AgentPlanner {
                 "app_agent" in availableToolIds) -> "app_agent"
             "github" in input && "github" in availableToolIds -> "github"
             ("office" in input || "document" in input || "spreadsheet" in input ||
-                "簡報" in task.input || "文件" in task.input || "試算表" in task.input) &&
+                "簡報" in task.input || "試算表" in task.input) &&
                 "office" in availableToolIds -> "office"
             ("memory" in input || "記憶" in task.input || "记忆" in task.input) && "memory" in availableToolIds -> "memory"
             ("skill" in input || "skills" in input || "技能" in task.input) && "skills" in availableToolIds -> "skills"
