@@ -35,6 +35,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -63,6 +65,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -91,6 +95,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -116,6 +122,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -144,6 +152,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - name: Verify Phase 5 implementation
         shell: bash
         run: |
@@ -169,6 +179,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - name: Verify AI Moments and AI Community implementation
         shell: bash
         run: |
@@ -187,6 +199,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - name: Verify Voice implementation
         shell: bash
         run: |
