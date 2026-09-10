@@ -1,0 +1,3 @@
+# Real Model Provider + Repository Cleanup
+
+Next Nexus milestone: connect Gemini and OpenRouter to the existing ModelProvider architecture, retain Local fallback, add tests/error handling, and perform compatibility-first repository cleanup. Preserve existing Agent Task, Agent Loop, App Agent, Local File Agent, Memory, Skills, Settings, GitHub, and CI functionality. Native Android/Kotlin/Jetpack Compose remains the architecture; Expo Go is not used. Never commit or log secrets; do not silently merge or deploy.
