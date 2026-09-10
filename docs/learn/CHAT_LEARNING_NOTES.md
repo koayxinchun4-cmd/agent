@@ -158,9 +158,9 @@ Important concepts:
 CI verifies changes automatically, such as:
 - unit tests
 - Android lint
-- APK build
 - Gradle wrapper validation
 - security checks
+- APK build when packaging is intentionally enabled
 
 **CD — Continuous Delivery / Deployment（持續交付／部署）.**
 
@@ -328,33 +328,120 @@ run CI / Security
 confirm Green
 ```
 
-Example lesson from CI #155:
-- Android build/test/lint succeeded.
-- Gradle wrapper verification failed.
-- The failure was in workflow configuration rather than Nexus application code.
-- The workflow used an invalid Gradle wrapper-validation action reference.
-- The fix was to correct the action reference and rerun CI.
-
-This is an important distinction: **application bug vs build/CI configuration bug**.
-
-## 10. Branch management lesson
-
-Having many branches is not automatically bad, but branches should represent real work.
-
-Recommended categories:
+Important distinction:
 
 ```text
-feature/xxx
-fix/xxx
-docs/xxx
-study/xxx
+Application bug
+    ≠
+Build/CI configuration bug
 ```
 
-After a branch is merged and no longer needed, it can be deleted.
+A CI failure can come from workflow configuration even when Kotlin/Android code is correct. The Gradle wrapper validation incident taught us to inspect the exact failing workflow step before changing application code.
 
-Do not delete all workflows or branches simply because the GitHub UI looks crowded. First determine whether each item is active, required, obsolete, or historical.
+## 10. Comment vs common
 
-## 11. Reference projects studied
+These two English words are easy to confuse but have different meanings.
+
+### `comment`
+**Comment — 註解／留言.**
+
+`comment out` means to disable code temporarily by turning it into a comment instead of deleting it.
+
+Kotlin / Java:
+
+```kotlin
+// temporarily disabled
+```
+
+YAML / GitHub Actions:
+
+```yaml
+# temporarily disabled
+```
+
+Important: YAML uses `#` for comments; `//` is not the YAML comment syntax.
+
+### `common`
+**Common — 共同的／共用的／常見的.**
+
+Examples:
+
+```text
+common code = 共用程式碼
+common problem = 常見問題
+```
+
+Memory trick:
+
+```text
+comment = 💬 留言／註解
+common  = 👥 共同／共用
+```
+
+## 11. Roadmap execution and APK policy
+
+Nexus uses a Phase 1–7 roadmap. During a full roadmap execution, the priority is **roadmap correctness and Green verification**, not producing an APK on every workflow run.
+
+Preferred sequence:
+
+```text
+Phase 1
+  ↓ verify
+Phase 2
+  ↓ verify
+Phase 3
+  ↓ verify
+Phase 4
+  ↓ verify
+Phase 5
+  ↓ verify
+Phase 6
+  ↓ verify
+Phase 7
+  ↓ verify
+ALL GREEN
+  ↓
+Build APK
+  ↓
+Release when explicitly appropriate
+```
+
+During roadmap execution, APK packaging steps can be **commented out** rather than deleted. This keeps the configuration recoverable and makes the workflow easier to understand.
+
+This separation reduces CI noise:
+
+```text
+Roadmap verification
+    ≠
+APK packaging
+```
+
+The APK is a final packaging deliverable after the roadmap reaches the required Green state, not a mandatory artifact for every roadmap step.
+
+## 12. Workflow restart lesson
+
+When a workflow needs a clean restart, create a dedicated branch from the current clean `main` rather than carrying stale or oversized historical changes into the new run.
+
+Example:
+
+```text
+main
+  ↓
+feature/roadmap-all-no-apk
+  ↓
+Roadmap ALL execution
+```
+
+The restart workflow should:
+- run Phase 1–7 sequentially
+- verify after each phase
+- preserve existing functionality
+- keep APK packaging disabled during roadmap execution
+- use `#` comments to disable unused workflow steps
+- keep security and permission boundaries
+- only enable APK packaging after the roadmap is Green
+
+## 13. Reference projects studied
 
 Nexus architecture discussions examined public projects including:
 - AAswordman/Operit — Android AI agent platform
@@ -363,6 +450,7 @@ Nexus architecture discussions examined public projects including:
 - NamashivayamS/Autonomous-CI-CD-Self-Healing-Agent — self-healing CI/CD concepts
 - PatilShreyas/debroid — headless Android debugging for agents
 - Nexus AI itself — primary project to study and build
+- WPVibe — WordPress integration example showing Agent tools, permissions, authorization, preview, and publish-oriented workflows
 
 Study principle:
 
@@ -374,7 +462,7 @@ copy source code
 
 Respect original licenses, attribution, and provenance. Prefer independent reimplementation of useful concepts.
 
-## 12. Coding-language learning map
+## 14. Coding-language learning map
 
 The project currently touches more technologies than the project owner originally studied. The practical priority is:
 
@@ -391,7 +479,7 @@ The project currently touches more technologies than the project owner originall
 
 Do not attempt to master all ten before continuing Nexus development.
 
-## 13. Communication format for future Nexus work
+## 15. Communication format for future Nexus work
 
 For meaningful changes, explain:
 
@@ -409,7 +497,7 @@ For meaningful changes, explain:
 
 Use English-first technical terminology with Traditional Chinese explanations so the documentation matches the owner's English-first self-study background while remaining easy to follow in Traditional Chinese.
 
-## 14. What the project owner does not need to do
+## 16. What the project owner does not need to do
 
 The owner does not need to:
 - already know professional Android development
