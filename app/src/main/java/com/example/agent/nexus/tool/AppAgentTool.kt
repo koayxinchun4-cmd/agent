@@ -14,13 +14,8 @@ class AppAgentTool(
     override val description: String = "Open an installed Android app using an explicit package name."
 
     override suspend fun execute(task: AgentTask): ToolResult {
-        val packageName = task.metadata["package"]?.trim()
-            ?.takeIf { it.isNotBlank() }
-            ?: PACKAGE_PATTERN.find(task.input)?.groupValues?.get(1)
-
-        if (packageName.isNullOrBlank()) {
-            return ToolResult.Failure("請提供要開啟的 App package name，例如：package:com.example.app")
-        }
+        val packageName = extractPackageName(task)
+            ?: return ToolResult.Failure("請提供要開啟的 App package name，例如：package:com.example.app")
 
         return try {
             val intent = context.packageManager.getLaunchIntentForPackage(packageName)
@@ -42,7 +37,14 @@ class AppAgentTool(
         false
     }
 
-    private companion object {
-        val PACKAGE_PATTERN = Regex("(?:package:|套件:)\\s*([A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+)")
+    companion object {
+        const val PACKAGE_KEY = "package"
+        private val PACKAGE_PATTERN = Regex("(?:package:|套件:)\\s*([A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+)")
+
+        fun extractPackageName(task: AgentTask): String? {
+            return task.metadata[PACKAGE_KEY]?.trim()
+                ?.takeIf { it.matches(PACKAGE_PATTERN) }
+                ?: PACKAGE_PATTERN.find(task.input)?.groupValues?.get(1)
+        }
     }
 }
