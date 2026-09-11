@@ -1,5 +1,7 @@
 package com.example.agent.ui.screen
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +39,7 @@ import com.example.agent.nexus.agent.AgentExecution
 import com.example.agent.nexus.agent.AgentProgress
 import com.example.agent.nexus.agent.AgentResult
 import com.example.agent.nexus.agent.AgentStepResult
+import com.example.agent.nexus.tool.LocalFileTool
 
 private enum class TaskStepStatus { DONE, ACTIVE, PENDING, FAILED }
 
@@ -57,6 +60,17 @@ fun TaskScreen(
     val running = uiState is TaskUiState.Running
     val finished = uiState is TaskUiState.Completed || uiState is TaskUiState.Failed
     val started = running || finished
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            prompt = "读取并分析我选取的文件"
+            viewModel.startTask(
+                prompt,
+                metadata = mapOf(LocalFileTool.SELECTED_URI_KEY to uri.toString())
+            )
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -104,6 +118,11 @@ fun TaskScreen(
                         modifier = Modifier.fillMaxWidth(),
                         contentPadding = PaddingValues(vertical = 14.dp)
                     ) { Text("Start task") }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { filePicker.launch(arrayOf("text/*", "application/json", "application/xml")) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("选择文件并交给 Nexus") }
                 }
             }
         } else {
