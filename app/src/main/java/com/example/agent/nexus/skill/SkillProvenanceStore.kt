@@ -24,7 +24,8 @@ class SkillProvenanceStore(
                 importDate = properties.required("importDate"),
                 modificationStatus = properties.required("modificationStatus"),
                 nexusChanges = properties.required("nexusChanges"),
-                removalStatus = properties.required("removalStatus")
+                removalStatus = properties.required("removalStatus"),
+                contentSha256 = properties.getProperty("contentSha256")?.takeIf { it.isNotBlank() }
             )
         }.getOrNull()
     }
@@ -44,6 +45,9 @@ class SkillProvenanceStore(
             setProperty("modificationStatus", provenance.modificationStatus)
             setProperty("nexusChanges", provenance.nexusChanges)
             setProperty("removalStatus", provenance.removalStatus)
+            provenance.contentSha256?.takeIf { it.isNotBlank() }?.let {
+                setProperty("contentSha256", it)
+            }
         }
         provenanceFile(provenance.skillId).outputStream().use { properties.store(it, "Nexus Skill provenance") }
     }
