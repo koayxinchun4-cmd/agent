@@ -1,6 +1,7 @@
 package com.example.agent.nexus.skill
 
 import java.nio.file.Files
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -29,6 +30,48 @@ class SkillRegistryTest {
 
         reloaded.enable("demo")
         assertTrue(SkillRegistry(root).isEnabled("demo"))
+    }
+
+    @Test
+    fun provenanceAwareInstallPersistsSourceMetadata() {
+        val root = Files.createTempDirectory("skills").toFile()
+        val provenance = SkillProvenance(
+            skillId = "demo",
+            skillName = "Demo Skill",
+            sourceRepository = "owner/repo",
+            sourcePath = "skills/demo/SKILL.md",
+            sourceCommitOrVersion = "abc123",
+            license = "MIT",
+            originalAuthor = "owner",
+            importDate = "2026-09-11",
+            modificationStatus = "NEXUS_NATIVE",
+            nexusChanges = "Adapted validation rules",
+            removalStatus = "RETAINED"
+        )
+
+        SkillRegistry(root).install("demo", "# Demo", provenance)
+
+        assertEquals(provenance, SkillRegistry(root).getProvenance("demo"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun provenanceSkillIdMustMatchInstalledSkill() {
+        val root = Files.createTempDirectory("skills").toFile()
+        val provenance = SkillProvenance(
+            skillId = "other",
+            skillName = "Other",
+            sourceRepository = "owner/repo",
+            sourcePath = "SKILL.md",
+            sourceCommitOrVersion = "abc123",
+            license = "MIT",
+            originalAuthor = "owner",
+            importDate = "2026-09-11",
+            modificationStatus = "UNMODIFIED",
+            nexusChanges = "",
+            removalStatus = "RETAINED"
+        )
+
+        SkillRegistry(root).install("demo", "# Demo", provenance)
     }
 
     @Test(expected = IllegalArgumentException::class)
