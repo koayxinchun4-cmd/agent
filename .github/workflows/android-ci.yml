@@ -38,6 +38,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Verify checked out commit and reliability test source
+        run: |
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test -f app/src/test/java/com/example/agent/nexus/agent/NexusAgentReliabilityTest.kt
+          ! grep -R "error.message" app/src/test/java/com/example/agent/nexus/agent/NexusAgentReliabilityTest.kt
+          git status --short
+          git rev-parse HEAD
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -57,7 +65,7 @@ jobs:
         run: printf 'GEMINI_API_KEY=%s\n' "${{ secrets.GEMINI_API_KEY }}" > .env
 
       - name: Run unit tests
-        run: ./gradlew :app:testDebugUnitTest --stacktrace --no-daemon
+        run: ./gradlew clean :app:testDebugUnitTest --stacktrace --no-daemon
 
       - name: Run Android lint
         run: ./gradlew :app:lintDebug --stacktrace --no-daemon
