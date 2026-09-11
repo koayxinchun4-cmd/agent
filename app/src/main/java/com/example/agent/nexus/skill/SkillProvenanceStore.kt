@@ -23,7 +23,7 @@ class SkillProvenanceStore(
                 originalAuthor = properties.required("originalAuthor"),
                 importDate = properties.required("importDate"),
                 modificationStatus = properties.required("modificationStatus"),
-                nexusChanges = properties.required("nexusChanges"),
+                nexusChanges = properties.optional("nexusChanges"),
                 removalStatus = properties.required("removalStatus"),
                 contentSha256 = properties.getProperty("contentSha256")?.takeIf { it.isNotBlank() }
             )
@@ -56,6 +56,9 @@ class SkillProvenanceStore(
 
     private fun Properties.required(key: String): String =
         getProperty(key)?.takeIf { it.isNotBlank() } ?: throw IllegalStateException("missing provenance field: $key")
+
+    private fun Properties.optional(key: String): String =
+        getProperty(key).orEmpty()
 
     private companion object {
         const val PROVENANCE_FILE = ".provenance.properties"
