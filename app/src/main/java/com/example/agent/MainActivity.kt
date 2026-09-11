@@ -75,7 +75,7 @@ class MainActivity : ComponentActivity() {
         val toolRegistry = ToolRegistry(
             listOf(
                 LocalTaskTool(),
-                LocalFileTool(filesDir),
+                LocalFileTool(filesDir, contentResolver),
                 AppAgentTool(applicationContext),
                 MemoryTool(db.memoryDao()),
                 SkillTool(skillRegistry),
