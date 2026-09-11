@@ -54,6 +54,51 @@ class SkillRegistryTest {
         assertEquals(provenance, SkillRegistry(root).getProvenance("demo"))
     }
 
+    @Test
+    fun provenanceAwareInstallAcceptsMatchingContentHash() {
+        val root = Files.createTempDirectory("skills").toFile()
+        val content = "# Demo\n\nUse for tests."
+        val provenance = SkillProvenance(
+            skillId = "demo",
+            skillName = "Demo Skill",
+            sourceRepository = "owner/repo",
+            sourcePath = "skills/demo/SKILL.md",
+            sourceCommitOrVersion = "abc123",
+            license = "MIT",
+            originalAuthor = "owner",
+            importDate = "2026-09-11",
+            modificationStatus = "UNMODIFIED",
+            nexusChanges = "",
+            removalStatus = "RETAINED",
+            contentSha256 = SkillIntegrity.sha256(content)
+        )
+
+        SkillRegistry(root).install("demo", content, provenance)
+
+        assertEquals(provenance, SkillRegistry(root).getProvenance("demo"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun provenanceAwareInstallRejectsMismatchedContentHash() {
+        val root = Files.createTempDirectory("skills").toFile()
+        val provenance = SkillProvenance(
+            skillId = "demo",
+            skillName = "Demo Skill",
+            sourceRepository = "owner/repo",
+            sourcePath = "skills/demo/SKILL.md",
+            sourceCommitOrVersion = "abc123",
+            license = "MIT",
+            originalAuthor = "owner",
+            importDate = "2026-09-11",
+            modificationStatus = "UNMODIFIED",
+            nexusChanges = "",
+            removalStatus = "RETAINED",
+            contentSha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+        )
+
+        SkillRegistry(root).install("demo", "# Different", provenance)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun provenanceSkillIdMustMatchInstalledSkill() {
         val root = Files.createTempDirectory("skills").toFile()
