@@ -65,6 +65,35 @@ class NexusAgentReliabilityTest {
     }
 
     @Test
+    fun enforcesSingleAttemptBound() = runBlocking {
+        var calls = 0
+        val tool = object : AgentTool {
+            override val id = "local_task"
+            override val name = "Test Task"
+            override val description = "Always fails"
+
+            override suspend fun execute(task: AgentTask): ToolResult {
+                calls += 1
+                return ToolResult.Failure("bounded failure")
+            }
+        }
+
+        val execution = NexusAgent(
+            toolRegistry = ToolRegistry(listOf(tool)),
+            loopConfig = AgentLoopConfig(maxAttempts = 1)
+        ).executeDetailed(AgentTask("reliability-3", "run once"))
+
+        assertTrue(execution.result is AgentResult.Failure)
+        assertEquals(1, execution.attempts)
+        assertEquals(1, calls)
+        assertTrue(
+            execution.steps.any {
+                it.step == "verify" && it.message.contains("maximum attempts reached")
+            }
+        )
+    }
+
+    @Test
     fun rejectsInvalidLoopConfiguration() {
         assertThrows(IllegalArgumentException::class.java) {
             AgentLoopConfig(maxAttempts = 0)
