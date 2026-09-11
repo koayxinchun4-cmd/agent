@@ -61,7 +61,13 @@ class NexusAgent(
                 }
                 try {
                     emit(AgentStepResult("model:${provider.id}", true, "Generating response"))
-                    val response = provider.generate(currentTask.input)
+                    val response = provider.generate(
+                        ModelRequest(
+                            prompt = currentTask.input,
+                            taskId = currentTask.id,
+                            metadata = currentTask.metadata
+                        )
+                    )
                     val result = AgentResult.Success(response.text)
                     emit(AgentStepResult("verify", true, "Response generated successfully"))
                     emit(AgentStepResult("answer", true, result.text))
