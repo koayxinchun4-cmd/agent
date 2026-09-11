@@ -3,7 +3,8 @@ package com.example.agent.nexus.skill
 import java.io.File
 
 class SkillRegistry(
-    private val rootDirectory: File
+    private val rootDirectory: File,
+    private val provenanceStore: SkillProvenanceStore = SkillProvenanceStore(rootDirectory)
 ) {
     fun list(): List<SkillDocument> = skillFiles()
         .mapNotNull { file -> runCatching { read(file) }.getOrNull() }
@@ -12,6 +13,8 @@ class SkillRegistry(
     fun get(id: String): SkillDocument? = skillFiles()
         .firstOrNull { it.parentFile?.name == id }
         ?.let { runCatching { read(it) }.getOrNull() }
+
+    fun getProvenance(id: String): SkillProvenance? = provenanceStore.get(id)
 
     fun isEnabled(id: String): Boolean = get(id) != null && stateFile(id).let { file ->
         !file.isFile || runCatching { file.readText(Charsets.UTF_8).trim() == ENABLED }.getOrDefault(false)
@@ -38,8 +41,18 @@ class SkillRegistry(
         return SkillParser.parse(id, content)
     }
 
+    fun install(id: String, content: String, provenance: SkillProvenance): SkillDocument {
+        require(provenance.skillId == id) { "provenance skill id mismatch" }
+        val document = install(id, content)
+        provenanceStore.save(provenance)
+        return document
+    }
+
     fun installIfMissing(id: String, content: String): SkillDocument =
         get(id) ?: install(id, content)
+
+    fun installIfMissing(id: String, content: String, provenance: SkillProvenance): SkillDocument =
+        get(id) ?: install(id, content, provenance)
 
     private fun skillFiles(): List<File> = rootDirectory.listFiles()
         .orEmpty()
