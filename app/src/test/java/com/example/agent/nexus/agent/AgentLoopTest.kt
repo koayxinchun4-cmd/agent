@@ -43,11 +43,11 @@ class AgentLoopTest {
     }
 
     @Test
-    fun twoFailuresEndWithFailure() = runBlocking {
+    fun twoTransientFailuresEndAtConfiguredBound() = runBlocking {
         val tool = SequenceTool(
             "web_research",
-            ToolResult.Failure("第一次失败"),
-            ToolResult.Failure("第二次失败")
+            ToolResult.Failure("第一次暂时失败"),
+            ToolResult.Failure("第二次暂时失败")
         )
         val agent = agentWith(tool)
 
