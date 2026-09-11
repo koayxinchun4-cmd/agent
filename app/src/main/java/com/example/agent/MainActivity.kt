@@ -9,9 +9,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.agent.BuildConfig
 import com.example.agent.data.local.AppDatabase
 import com.example.agent.data.remote.GeminiApiService
 import com.example.agent.data.repository.ChatRepository
+import com.example.agent.nexus.agent.GeminiModelProvider
+import com.example.agent.nexus.agent.ModelProviderRegistry
 import com.example.agent.nexus.agent.NexusAgent
 import com.example.agent.nexus.skill.SkillRegistry
 import com.example.agent.nexus.tool.AppAgentTool
@@ -57,10 +60,11 @@ class MainActivity : ComponentActivity() {
             .baseUrl("https://generativelanguage.googleapis.com/")
             .addConverterFactory(MoshiConverterFactory.create())
             .build()
+        val geminiApi = retrofit.create(GeminiApiService::class.java)
 
         val repository = ChatRepository(
             db.chatDao(),
-            retrofit.create(GeminiApiService::class.java)
+            geminiApi
         )
 
         val skillRegistry = SkillRegistry(File(filesDir, "skills"))
@@ -84,7 +88,13 @@ class MainActivity : ComponentActivity() {
                 GitHubTool()
             )
         )
-        val nexusAgent = NexusAgent(toolRegistry)
+        val modelProviders = ModelProviderRegistry(
+            listOf(
+                GeminiModelProvider(geminiApi, BuildConfig.GEMINI_API_KEY),
+                com.example.agent.nexus.agent.LocalModelProvider()
+            )
+        )
+        val nexusAgent = NexusAgent(toolRegistry, modelProviders = modelProviders)
 
         setContent {
             AgentTheme {
