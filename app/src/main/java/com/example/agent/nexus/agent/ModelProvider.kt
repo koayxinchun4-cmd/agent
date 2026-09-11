@@ -1,5 +1,12 @@
 package com.example.agent.nexus.agent
 
+/** A provider-agnostic request shared by every model backend. */
+data class ModelRequest(
+    val prompt: String,
+    val taskId: String? = null,
+    val metadata: Map<String, String> = emptyMap()
+)
+
 /**
  * Provider abstraction for model-backed Agent responses.
  * A provider owns one model backend; Agent Core only depends on this contract.
@@ -9,7 +16,11 @@ interface ModelProvider {
     val route: ModelRoute
     val isAvailable: Boolean
 
-    suspend fun generate(prompt: String): ModelResponse
+    suspend fun generate(request: ModelRequest): ModelResponse
+
+    /** Compatibility helper for simple callers that only have a prompt. */
+    suspend fun generate(prompt: String): ModelResponse =
+        generate(ModelRequest(prompt = prompt))
 }
 
 data class ModelResponse(
@@ -60,8 +71,8 @@ class LocalModelProvider : ModelProvider {
     override val route: ModelRoute = ModelRoute.Local
     override val isAvailable: Boolean = true
 
-    override suspend fun generate(prompt: String): ModelResponse {
-        val normalized = prompt.trim()
+    override suspend fun generate(request: ModelRequest): ModelResponse {
+        val normalized = request.prompt.trim()
         val text = if (normalized.isEmpty()) {
             "Please provide a task for Nexus to execute."
         } else {
