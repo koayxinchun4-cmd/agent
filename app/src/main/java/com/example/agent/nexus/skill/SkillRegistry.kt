@@ -13,6 +13,20 @@ class SkillRegistry(
         .firstOrNull { it.parentFile?.name == id }
         ?.let { runCatching { read(it) }.getOrNull() }
 
+    fun isEnabled(id: String): Boolean = get(id) != null && stateFile(id).let { file ->
+        !file.isFile || runCatching { file.readText(Charsets.UTF_8).trim() == ENABLED }.getOrDefault(false)
+    }
+
+    fun enable(id: String) {
+        require(get(id) != null) { "skill not found: $id" }
+        stateFile(id).writeText(ENABLED, Charsets.UTF_8)
+    }
+
+    fun disable(id: String) {
+        require(get(id) != null) { "skill not found: $id" }
+        stateFile(id).writeText(DISABLED, Charsets.UTF_8)
+    }
+
     fun install(id: String, content: String): SkillDocument {
         require(id.matches(Regex("[a-zA-Z0-9._-]+"))) { "invalid skill id" }
         val root = rootDirectory.canonicalFile
@@ -36,7 +50,12 @@ class SkillRegistry(
     private fun read(file: File): SkillDocument =
         SkillParser.parse(file.parentFile?.name ?: "unknown", file.readText(Charsets.UTF_8))
 
+    private fun stateFile(id: String): File = File(rootDirectory, id).resolve(STATE_FILE)
+
     private companion object {
         const val MAX_SKILL_BYTES = 256 * 1024L
+        const val STATE_FILE = ".enabled"
+        const val ENABLED = "enabled"
+        const val DISABLED = "disabled"
     }
 }
