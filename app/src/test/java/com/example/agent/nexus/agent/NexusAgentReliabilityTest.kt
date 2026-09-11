@@ -5,6 +5,7 @@ import com.example.agent.nexus.tool.ToolRegistry
 import com.example.agent.nexus.tool.ToolResult
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -65,11 +66,8 @@ class NexusAgentReliabilityTest {
 
     @Test
     fun rejectsInvalidLoopConfiguration() {
-        try {
+        assertThrows(IllegalArgumentException::class.java) {
             AgentLoopConfig(maxAttempts = 0)
-            throw AssertionError("Expected invalid configuration to be rejected")
-        } catch (_: IllegalArgumentException) {
-            // Expected: AgentLoopConfig enforces maxAttempts >= 1.
         }
     }
 }
