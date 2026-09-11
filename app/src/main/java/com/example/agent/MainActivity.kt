@@ -16,6 +16,7 @@ import com.example.agent.data.remote.OpenRouterApiService
 import com.example.agent.data.repository.ChatRepository
 import com.example.agent.nexus.agent.GeminiModelProvider
 import com.example.agent.nexus.agent.LocalModelProvider
+import com.example.agent.nexus.agent.ModelRouter
 import com.example.agent.nexus.agent.ModelProviderRegistry
 import com.example.agent.nexus.agent.NexusAgent
 import com.example.agent.nexus.agent.OpenRouterModelProvider
@@ -108,7 +109,12 @@ class MainActivity : ComponentActivity() {
                 LocalModelProvider()
             )
         )
-        val nexusAgent = NexusAgent(toolRegistry, modelProviders = modelProviders)
+        val modelRouter = ModelRouter(modelProviders.availability())
+        val nexusAgent = NexusAgent(
+            toolRegistry,
+            modelRouter = modelRouter,
+            modelProviders = modelProviders
+        )
 
         setContent {
             AgentTheme {
