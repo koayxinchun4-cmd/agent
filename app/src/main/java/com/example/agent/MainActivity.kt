@@ -12,10 +12,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.agent.BuildConfig
 import com.example.agent.data.local.AppDatabase
 import com.example.agent.data.remote.GeminiApiService
+import com.example.agent.data.remote.OpenRouterApiService
 import com.example.agent.data.repository.ChatRepository
 import com.example.agent.nexus.agent.GeminiModelProvider
+import com.example.agent.nexus.agent.LocalModelProvider
 import com.example.agent.nexus.agent.ModelProviderRegistry
 import com.example.agent.nexus.agent.NexusAgent
+import com.example.agent.nexus.agent.OpenRouterModelProvider
 import com.example.agent.nexus.skill.SkillRegistry
 import com.example.agent.nexus.tool.AppAgentTool
 import com.example.agent.nexus.tool.GitHubTool
@@ -62,6 +65,12 @@ class MainActivity : ComponentActivity() {
             .build()
         val geminiApi = retrofit.create(GeminiApiService::class.java)
 
+        val openRouterRetrofit = Retrofit.Builder()
+            .baseUrl("https://openrouter.ai/")
+            .addConverterFactory(MoshiConverterFactory.create())
+            .build()
+        val openRouterApi = openRouterRetrofit.create(OpenRouterApiService::class.java)
+
         val repository = ChatRepository(
             db.chatDao(),
             geminiApi
@@ -91,7 +100,12 @@ class MainActivity : ComponentActivity() {
         val modelProviders = ModelProviderRegistry(
             listOf(
                 GeminiModelProvider(geminiApi, BuildConfig.GEMINI_API_KEY),
-                com.example.agent.nexus.agent.LocalModelProvider()
+                OpenRouterModelProvider(
+                    openRouterApi,
+                    BuildConfig.OPENROUTER_API_KEY,
+                    BuildConfig.OPENROUTER_MODEL
+                ),
+                LocalModelProvider()
             )
         )
         val nexusAgent = NexusAgent(toolRegistry, modelProviders = modelProviders)
