@@ -17,18 +17,18 @@ class OpenRouterModelProvider(
     override val route: ModelRoute = ModelRoute.OpenRouter
     override val isAvailable: Boolean = isConfigured(apiKey, model)
 
-    override suspend fun generate(prompt: String): ModelResponse {
+    override suspend fun generate(request: ModelRequest): ModelResponse {
         require(isAvailable) { "OpenRouter provider is not configured" }
 
-        val request = OpenRouterRequest(
+        val apiRequest = OpenRouterRequest(
             model = model.trim(),
             messages = listOf(
-                OpenRouterMessage(role = "user", content = prompt.trim())
+                OpenRouterMessage(role = "user", content = request.prompt.trim())
             )
         )
         val response = apiService.createChatCompletion(
             authorization = "Bearer ${apiKey.trim()}",
-            request = request
+            request = apiRequest
         )
         val text = response.choices
             ?.firstOrNull()
