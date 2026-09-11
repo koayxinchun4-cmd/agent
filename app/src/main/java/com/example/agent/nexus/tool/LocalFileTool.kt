@@ -1,21 +1,31 @@
 package com.example.agent.nexus.tool
 
+import android.content.ContentResolver
+import android.net.Uri
 import com.example.agent.nexus.agent.AgentTask
 import java.io.File
 
 /**
- * Safe first File capability. It is intentionally limited to Nexus's private
- * app storage; broader phone-file access will later use Android's Storage
- * Access Framework with explicit user permission.
+ * Safe File capability. It supports Nexus private app storage and, when the
+ * user explicitly selects a document, Android Storage Access Framework (SAF).
  */
 class LocalFileTool(
-    private val rootDirectory: File
+    private val rootDirectory: File,
+    private val contentResolver: ContentResolver? = null
 ) : AgentTool {
     override val id: String = "file_agent"
     override val name: String = "Local File Agent"
-    override val description: String = "Lists or reads files inside Nexus private app storage."
+    override val description: String = "Lists or reads files inside Nexus private storage or a user-selected SAF document."
 
     override suspend fun execute(task: AgentTask): ToolResult {
+        val selectedUri = task.metadata[SELECTED_URI_KEY]
+        if (selectedUri != null) {
+            if (contentResolver == null) return ToolResult.Failure("SAF 文件读取器尚未初始化")
+            return SafFileReader { uri ->
+                contentResolver.openInputStream(Uri.parse(uri))
+            }.read(selectedUri)
+        }
+
         val input = task.input.trim()
         if (input.isEmpty()) return ToolResult.Failure("文件任务内容不能为空")
 
@@ -41,9 +51,7 @@ class LocalFileTool(
             entries.joinToString("\n")
         }
 
-        return ToolResult.Success(
-            "Nexus 私有文件列表\n$body"
-        )
+        return ToolResult.Success("Nexus 私有文件列表\n$body")
     }
 
     private fun readRequestedFile(input: String): ToolResult {
@@ -69,12 +77,11 @@ class LocalFileTool(
             return ToolResult.Failure("文件过大，暂不读取（上限 ${MAX_READ_BYTES / 1024} KB）")
         }
 
-        return ToolResult.Success(
-            "文件读取完成：$relativePath\n\n${target.readText(Charsets.UTF_8)}"
-        )
+        return ToolResult.Success("文件读取完成：$relativePath\n\n${target.readText(Charsets.UTF_8)}")
     }
 
-    private companion object {
+    companion object {
+        const val SELECTED_URI_KEY = "selected_uri"
         const val READ_MARKER = "读取"
         const val MAX_LIST_ENTRIES = 100
         const val MAX_READ_BYTES = 256 * 1024L
