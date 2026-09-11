@@ -1,9 +1,7 @@
 name: Release
 
+# Temporarily parked: release stays manual-only until Android CI and the current roadmap are stable.
 on:
-  push:
-    tags:
-      - 'v*.*.*'
   workflow_dispatch:
 
 permissions:
