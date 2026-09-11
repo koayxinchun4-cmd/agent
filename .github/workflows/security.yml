@@ -3,8 +3,24 @@ name: Security
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - "app/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradle.properties"
+      - "settings.gradle.kts"
+      - "build.gradle.kts"
+      - ".github/workflows/**"
   pull_request:
     branches: [ "main" ]
+    paths:
+      - "app/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradle.properties"
+      - "settings.gradle.kts"
+      - "build.gradle.kts"
+      - ".github/workflows/**"
   schedule:
     - cron: "30 2 * * 1"
   workflow_dispatch:
