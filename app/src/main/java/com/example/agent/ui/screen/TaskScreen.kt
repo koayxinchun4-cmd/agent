@@ -39,6 +39,7 @@ import com.example.agent.nexus.agent.AgentExecution
 import com.example.agent.nexus.agent.AgentProgress
 import com.example.agent.nexus.agent.AgentResult
 import com.example.agent.nexus.agent.AgentStepResult
+import com.example.agent.nexus.tool.AppAgentTool
 import com.example.agent.nexus.tool.LocalFileTool
 
 private enum class TaskStepStatus { DONE, ACTIVE, PENDING, FAILED }
@@ -56,6 +57,7 @@ fun TaskScreen(
     viewModel: TaskViewModel
 ) {
     var prompt by remember { mutableStateOf(initialPrompt) }
+    var appPackage by remember { mutableStateOf("") }
     val uiState by viewModel.uiState.collectAsState()
     val running = uiState is TaskUiState.Running
     val finished = uiState is TaskUiState.Completed || uiState is TaskUiState.Failed
@@ -123,6 +125,29 @@ fun TaskScreen(
                         onClick = { filePicker.launch(arrayOf("text/*", "application/json", "application/xml")) },
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("选择文件并交给 Nexus") }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = appPackage,
+                        onValueChange = { appPackage = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("App package name") },
+                        placeholder = { Text("例如：com.android.chrome") },
+                        supportingText = { Text("只会开启你明确指定的已安装 App") }
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedButton(
+                        onClick = {
+                            val packageName = appPackage.trim()
+                            prompt = "開啟 package:$packageName"
+                            viewModel.startTask(
+                                prompt,
+                                metadata = mapOf(AppAgentTool.PACKAGE_KEY to packageName)
+                            )
+                        },
+                        enabled = appPackage.trim().isNotBlank(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("開啟指定 App") }
                 }
             }
         } else {
@@ -176,6 +201,7 @@ fun TaskScreen(
                 onClick = {
                     if (running) viewModel.stopTask() else viewModel.reset()
                     prompt = ""
+                    appPackage = ""
                 },
                 modifier = Modifier.fillMaxWidth()
             ) { Text(if (running) "停止任务" else "新建任务") }
