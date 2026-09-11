@@ -100,6 +100,32 @@ class SkillRegistryTest {
     }
 
     @Test(expected = IllegalArgumentException::class)
+    fun provenanceAwareInstallRejectsUnknownLicense() {
+        val root = Files.createTempDirectory("skills").toFile()
+        val provenance = provenance(license = "Unknown License")
+
+        SkillRegistry(root).install("demo", "# Demo", provenance)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun provenanceAwareInstallRejectsMissingLicense() {
+        val root = Files.createTempDirectory("skills").toFile()
+        val provenance = provenance(license = "")
+
+        SkillRegistry(root).install("demo", "# Demo", provenance)
+    }
+
+    @Test
+    fun registryCanUseCustomLicensePolicy() {
+        val root = Files.createTempDirectory("skills").toFile()
+        val registry = SkillRegistry(root, licenseGate = SkillLicenseGate(setOf("Custom-License")))
+
+        registry.install("demo", "# Demo", provenance(license = "Custom-License"))
+
+        assertTrue(registry.get("demo") != null)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
     fun provenanceSkillIdMustMatchInstalledSkill() {
         val root = Files.createTempDirectory("skills").toFile()
         val provenance = SkillProvenance(
@@ -124,4 +150,18 @@ class SkillRegistryTest {
         val root = Files.createTempDirectory("skills").toFile()
         SkillRegistry(root).enable("missing")
     }
+
+    private fun provenance(license: String) = SkillProvenance(
+        skillId = "demo",
+        skillName = "Demo Skill",
+        sourceRepository = "owner/repo",
+        sourcePath = "skills/demo/SKILL.md",
+        sourceCommitOrVersion = "abc123",
+        license = license,
+        originalAuthor = "owner",
+        importDate = "2026-09-11",
+        modificationStatus = "UNMODIFIED",
+        nexusChanges = "",
+        removalStatus = "RETAINED"
+    )
 }
