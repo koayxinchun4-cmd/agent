@@ -1,13 +1,14 @@
 name: Aider AI Code Assistant
 
+# Temporarily parked: do not run automated coding agents while CI is being stabilized.
+# Restore the issue_comment trigger after Android CI error rate improves.
 on:
-  issue_comment:
-    types: [created]
+  workflow_dispatch:
 
 jobs:
   aider:
     name: Run Aider
-    if: ${{ contains(github.event.comment.body, '@aider') }}
+    if: ${{ false }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
