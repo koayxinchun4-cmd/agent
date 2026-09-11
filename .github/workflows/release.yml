@@ -2,7 +2,8 @@ name: Release
 
 on:
   push:
-    branches: [ "main" ]
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
 
 permissions:
@@ -49,38 +50,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-
-          latest_tag="$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')"
-
-          if [[ -z "$latest_tag" ]]; then
-            version="1.0.0"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME}"
           else
-            if [[ ! "$latest_tag" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-              echo "Latest release tag '$latest_tag' is not a valid semantic version (vMAJOR.MINOR.PATCH)."
-              exit 1
-            fi
-
-            major="${BASH_REMATCH[1]}"
-            minor="${BASH_REMATCH[2]}"
-            patch="${BASH_REMATCH[3]}"
-            message="${{ github.event.head_commit.message }}"
-
-            if [[ "$message" =~ BREAKING[[:space:]]CHANGE ]] || [[ "$message" =~ ^[^:]+!:[[:space:]] ]]; then
-              major=$((major + 1))
-              minor=0
-              patch=0
-            elif [[ "$message" =~ ^feat(\(.+\))?:[[:space:]] ]]; then
-              minor=$((minor + 1))
-              patch=0
+            latest_tag="$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')"
+            if [[ -z "$latest_tag" ]]; then
+              version="v1.0.0"
             else
-              patch=$((patch + 1))
+              if [[ ! "$latest_tag" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+                echo "Latest release tag '$latest_tag' is not a valid semantic version (vMAJOR.MINOR.PATCH)."
+                exit 1
+              fi
+              major="${BASH_REMATCH[1]}"
+              minor="${BASH_REMATCH[2]}"
+              patch=$((BASH_REMATCH[3] + 1))
+              version="v${major}.${minor}.${patch}"
             fi
-
-            version="${major}.${minor}.${patch}"
           fi
-
-          echo "version=v${version}" >> "$GITHUB_OUTPUT"
-          echo "Next release: v${version}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Release: ${version}"
 
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
