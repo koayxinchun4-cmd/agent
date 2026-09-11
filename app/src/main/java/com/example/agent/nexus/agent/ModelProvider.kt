@@ -27,6 +27,28 @@ class ModelProviderRegistry(
 
     fun availableRoutes(): Set<ModelRoute> =
         providersByRoute.values.filter { it.isAvailable }.map { it.route }.toSet()
+
+    fun availability(): ModelAvailability = ModelAvailability(
+        geminiAvailable = get(ModelRoute.Gemini)?.isAvailable == true,
+        openRouterAvailable = get(ModelRoute.OpenRouter)?.isAvailable == true
+    )
+
+    /**
+     * Returns an ordered list of usable providers for a requested route.
+     * The requested route is preferred, followed by other cloud providers,
+     * with Local always acting as the final safe fallback when registered.
+     */
+    fun fallbackRoutes(preferred: ModelRoute): List<ModelRoute> {
+        val order = listOf(
+            preferred,
+            ModelRoute.Gemini,
+            ModelRoute.OpenRouter,
+            ModelRoute.Local
+        )
+        return order.distinct().filter { route ->
+            providersByRoute[route]?.isAvailable == true
+        }
+    }
 }
 
 /**
