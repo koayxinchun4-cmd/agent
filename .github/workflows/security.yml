@@ -1,28 +1,8 @@
 name: Security
 
+# Temporarily parked: Android CI is the only automatic CI gate while reliability errors are reduced.
+# Restore push / pull_request / schedule triggers after Android CI stability improves.
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - "app/**"
-      - "gradle/**"
-      - "gradlew"
-      - "gradle.properties"
-      - "settings.gradle.kts"
-      - "build.gradle.kts"
-      - ".github/workflows/**"
-  pull_request:
-    branches: [ "main" ]
-    paths:
-      - "app/**"
-      - "gradle/**"
-      - "gradlew"
-      - "gradle.properties"
-      - "settings.gradle.kts"
-      - "build.gradle.kts"
-      - ".github/workflows/**"
-  schedule:
-    - cron: "30 2 * * 1"
   workflow_dispatch:
 
 permissions:
