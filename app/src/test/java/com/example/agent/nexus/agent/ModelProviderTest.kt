@@ -30,4 +30,45 @@ class ModelProviderTest {
         assertEquals(provider, registry.get(ModelRoute.Local))
         assertEquals(setOf(ModelRoute.Local), registry.availableRoutes())
     }
+
+    @Test
+    fun `registry reports only configured cloud providers as available`() {
+        val registry = ModelProviderRegistry(
+            listOf(
+                provider,
+                TestProvider("gemini", ModelRoute.Gemini, true),
+                TestProvider("openrouter", ModelRoute.OpenRouter, false)
+            )
+        )
+
+        assertEquals(
+            ModelAvailability(geminiAvailable = true, openRouterAvailable = false),
+            registry.availability()
+        )
+    }
+
+    @Test
+    fun `fallback routes skip unavailable providers and keep local last`() {
+        val registry = ModelProviderRegistry(
+            listOf(
+                provider,
+                TestProvider("gemini", ModelRoute.Gemini, false),
+                TestProvider("openrouter", ModelRoute.OpenRouter, true)
+            )
+        )
+
+        assertEquals(
+            listOf(ModelRoute.OpenRouter, ModelRoute.Local),
+            registry.fallbackRoutes(ModelRoute.OpenRouter)
+        )
+    }
+
+    private class TestProvider(
+        override val id: String,
+        override val route: ModelRoute,
+        override val isAvailable: Boolean
+    ) : ModelProvider {
+        override suspend fun generate(prompt: String): ModelResponse =
+            ModelResponse(prompt, id, route)
+    }
 }
