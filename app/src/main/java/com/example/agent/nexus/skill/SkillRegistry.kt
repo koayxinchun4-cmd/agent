@@ -43,6 +43,9 @@ class SkillRegistry(
 
     fun install(id: String, content: String, provenance: SkillProvenance): SkillDocument {
         require(provenance.skillId == id) { "provenance skill id mismatch" }
+        require(SkillIntegrity.verify(content, provenance.contentSha256)) {
+            "skill content integrity check failed"
+        }
         val document = install(id, content)
         provenanceStore.save(provenance)
         return document
