@@ -17,18 +17,18 @@ class GeminiModelProvider(
     override val route: ModelRoute = ModelRoute.Gemini
     override val isAvailable: Boolean = isConfigured(apiKey)
 
-    override suspend fun generate(prompt: String): ModelResponse {
+    override suspend fun generate(request: ModelRequest): ModelResponse {
         require(isAvailable) { "Gemini provider is not configured" }
 
-        val request = GeminiRequest(
+        val apiRequest = GeminiRequest(
             contents = listOf(
                 Content(
                     role = "user",
-                    parts = listOf(Part(text = prompt.trim()))
+                    parts = listOf(Part(text = request.prompt.trim()))
                 )
             )
         )
-        val response = apiService.generateContent(apiKey.trim(), request)
+        val response = apiService.generateContent(apiKey.trim(), apiRequest)
         val text = response.candidates
             ?.firstOrNull()
             ?.content
