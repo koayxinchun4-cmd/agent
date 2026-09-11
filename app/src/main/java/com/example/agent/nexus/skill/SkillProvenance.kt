@@ -11,5 +11,6 @@ data class SkillProvenance(
     val importDate: String,
     val modificationStatus: String,
     val nexusChanges: String,
-    val removalStatus: String
+    val removalStatus: String,
+    val contentSha256: String? = null
 )
