@@ -24,6 +24,19 @@ class ModelProviderTest {
     }
 
     @Test
+    fun `provider receives standardized task context`() = runBlocking {
+        val request = ModelRequest(
+            prompt = "create a task",
+            taskId = "task-123",
+            metadata = mapOf("source" to "test")
+        )
+        val response = RecordingProvider().generate(request)
+
+        assertEquals("task-123", response.taskId)
+        assertEquals("test", response.metadata["source"])
+    }
+
+    @Test
     fun `registry exposes available local route`() {
         val registry = ModelProviderRegistry(listOf(provider))
 
@@ -68,7 +81,33 @@ class ModelProviderTest {
         override val route: ModelRoute,
         override val isAvailable: Boolean
     ) : ModelProvider {
-        override suspend fun generate(prompt: String): ModelResponse =
-            ModelResponse(prompt, id, route)
+        override suspend fun generate(request: ModelRequest): ModelResponse =
+            ModelResponse(request.prompt, id, route)
+    }
+
+    private data class RecordedResponse(
+        val taskId: String?,
+        val metadata: Map<String, String>
+    )
+
+    private class RecordingProvider : ModelProvider {
+        override val id: String = "recording"
+        override val route: ModelRoute = ModelRoute.Local
+        override val isAvailable: Boolean = true
+        var lastRequest: ModelRequest? = null
+
+        override suspend fun generate(request: ModelRequest): ModelResponse {
+            lastRequest = request
+            return ModelResponse(
+                text = request.prompt,
+                providerId = id,
+                route = route
+            )
+        }
+
+        fun responseForLastRequest(): RecordedResponse {
+            val request = requireNotNull(lastRequest)
+            return RecordedResponse(request.taskId, request.metadata)
+        }
     }
 }
