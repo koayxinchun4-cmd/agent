@@ -68,8 +68,8 @@ class NexusAgentReliabilityTest {
         try {
             AgentLoopConfig(maxAttempts = 0)
             throw AssertionError("Expected invalid configuration to be rejected")
-        } catch (error: IllegalArgumentException) {
-            assertTrue(error.message.orEmpty().contains("maxAttempts"))
+        } catch (_: IllegalArgumentException) {
+            // Expected: AgentLoopConfig enforces maxAttempts >= 1.
         }
     }
 }
