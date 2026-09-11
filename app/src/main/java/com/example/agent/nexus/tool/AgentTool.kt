@@ -2,11 +2,19 @@ package com.example.agent.nexus.tool
 
 import com.example.agent.nexus.agent.AgentTask
 
+/** Risk level for a capability. Risky or irreversible tools require explicit user confirmation. */
+enum class RiskLevel {
+    SAFE,
+    REQUIRES_CONFIRMATION
+}
+
 /** A capability that Nexus can invoke for a task. */
 interface AgentTool {
     val id: String
     val name: String
     val description: String
+    val riskLevel: RiskLevel
+        get() = RiskLevel.SAFE
 
     suspend fun execute(task: AgentTask): ToolResult
 }

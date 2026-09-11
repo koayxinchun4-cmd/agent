@@ -13,6 +13,7 @@ class NexusAgent(
     private val modelRouter: ModelRouter = ModelRouter(),
     private val verifier: AgentVerifier = AgentVerifier(),
     private val loopConfig: AgentLoopConfig = AgentLoopConfig(),
+    private val recoveryPolicy: AgentRecoveryPolicy = AgentRecoveryPolicy(),
     private val modelProviders: ModelProviderRegistry = ModelProviderRegistry(
         listOf(LocalModelProvider())
     )
@@ -24,20 +25,8 @@ class NexusAgent(
         task: AgentTask,
         onProgress: (AgentProgress) -> Unit = {}
     ): AgentExecution {
-        val initialPlan = planner.plan(
-            task = task,
-            availableToolIds = toolRegistry.list().map { it.id }.toSet()
-        )
-        val routedPlan = initialPlan.copy(route = modelRouter.route(task, initialPlan))
-        val provider = modelProviders.get(routedPlan.route)
-            ?.takeIf { it.isAvailable }
-            ?: modelProviders.get(ModelRoute.Local)
-
-        val plan = if (provider != null && provider.route != routedPlan.route) {
-            routedPlan.copy(route = provider.route)
-        } else {
-            routedPlan
-        }
+        var currentTask = task
+        var plan = planAndRoute(currentTask)
         val steps = mutableListOf<AgentStepResult>()
 
         fun emit(step: AgentStepResult, attempt: Int = 0) {
@@ -50,6 +39,9 @@ class NexusAgent(
 
         val toolId = plan.toolId
         if (toolId == null) {
+            val provider = modelProviders.get(plan.route)
+                ?.takeIf { it.isAvailable }
+                ?: modelProviders.get(ModelRoute.Local)
             if (provider == null) {
                 val result = AgentResult.Failure("No model provider is available")
                 emit(AgentStepResult("answer", false, result.message))
@@ -58,7 +50,7 @@ class NexusAgent(
 
             return try {
                 emit(AgentStepResult("model:${provider.id}", true, "Generating response"))
-                val response = provider.generate(task.input)
+                val response = provider.generate(currentTask.input)
                 val result = AgentResult.Success(response.text)
                 emit(AgentStepResult("verify", true, "Response generated successfully"))
                 emit(AgentStepResult("answer", true, result.text))
@@ -79,7 +71,7 @@ class NexusAgent(
         while (attempts < loopConfig.maxAttempts) {
             attempts += 1
             val attemptStep = "use_tool:$toolId#attempt$attempts"
-            lastResult = toolRegistry.execute(toolId, task)
+            lastResult = toolRegistry.execute(toolId, currentTask)
             emit(lastResult.toAgentStep(attemptStep), attempts)
 
             when (val verification = verifier.verify(lastResult)) {
@@ -93,16 +85,55 @@ class NexusAgent(
                 }
 
                 is VerificationResult.Retry -> {
-                    val canRetry = attempts < loopConfig.maxAttempts
+                    val diagnosis = when (lastResult) {
+                        is ToolResult.Failure -> recoveryPolicy.diagnose(lastResult)
+                        is ToolResult.Success -> recoveryPolicy.diagnoseVerification(verification.reason)
+                    }
+                    emit(
+                        AgentStepResult(
+                            "diagnose",
+                            false,
+                            when (diagnosis) {
+                                is FailureDiagnosis.Transient -> "Transient failure: ${diagnosis.reason}"
+                                is FailureDiagnosis.Permanent -> "Permanent failure: ${diagnosis.reason}"
+                            }
+                        ),
+                        attempts
+                    )
+
+                    val canRetry = attempts < loopConfig.maxAttempts &&
+                        diagnosis is FailureDiagnosis.Transient
+                    if (!canRetry) {
+                        emit(
+                            AgentStepResult(
+                                "verify",
+                                false,
+                                if (diagnosis is FailureDiagnosis.Permanent) {
+                                    "Recovery stopped: failure is permanent"
+                                } else {
+                                    "Recovery stopped: maximum attempts reached"
+                                }
+                            ),
+                            attempts
+                        )
+                        break
+                    }
+
+                    currentTask = recoveryPolicy.adjust(currentTask, diagnosis, attempts)
+                    plan = planAndRoute(currentTask)
+                    emit(
+                        AgentStepResult(
+                            "adjust_plan",
+                            true,
+                            "Adjusted input for recovery attempt ${attempts + 1}"
+                        ),
+                        attempts
+                    )
                     emit(
                         AgentStepResult(
                             "verify",
                             false,
-                            if (canRetry) {
-                                "Verification failed: ${verification.reason}; retrying"
-                            } else {
-                                "Verification failed: ${verification.reason}; maximum attempts reached"
-                            }
+                            "Recovery prepared; retrying"
                         ),
                         attempts
                     )
@@ -120,6 +151,22 @@ class NexusAgent(
         )
         emit(AgentStepResult("answer", false, result.message), attempts)
         return AgentExecution(plan, steps, result, attempts)
+    }
+
+    private fun planAndRoute(task: AgentTask): AgentPlan {
+        val initialPlan = planner.plan(
+            task = task,
+            availableToolIds = toolRegistry.list().map { it.id }.toSet()
+        )
+        val routedPlan = initialPlan.copy(route = modelRouter.route(task, initialPlan))
+        val provider = modelProviders.get(routedPlan.route)
+            ?.takeIf { it.isAvailable }
+            ?: modelProviders.get(ModelRoute.Local)
+        return if (provider != null && provider.route != routedPlan.route) {
+            routedPlan.copy(route = provider.route)
+        } else {
+            routedPlan
+        }
     }
 
     /**
