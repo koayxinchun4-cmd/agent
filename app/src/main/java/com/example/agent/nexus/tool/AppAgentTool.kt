@@ -39,11 +39,12 @@ class AppAgentTool(
 
     companion object {
         const val PACKAGE_KEY = "package"
+        private val PACKAGE_NAME_PATTERN = Regex("[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+")
         private val PACKAGE_PATTERN = Regex("(?:package:|套件:)\\s*([A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+)")
 
         fun extractPackageName(task: AgentTask): String? {
             return task.metadata[PACKAGE_KEY]?.trim()
-                ?.takeIf { it.matches(PACKAGE_PATTERN) }
+                ?.takeIf { PACKAGE_NAME_PATTERN.matches(it) }
                 ?: PACKAGE_PATTERN.find(task.input)?.groupValues?.get(1)
         }
     }
