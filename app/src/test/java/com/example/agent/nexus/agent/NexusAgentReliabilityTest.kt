@@ -36,7 +36,7 @@ class NexusAgentReliabilityTest {
         assertTrue(execution.result is AgentResult.Success)
         assertEquals(2, execution.attempts)
         assertEquals(2, calls)
-        assertTrue(execution.steps.any { it.step == "verify" && it.message.contains("retrying") })
+        assertTrue(execution.steps.any { it.step == "verify" && it.output.contains("retrying") })
     }
 
     @Test
@@ -88,7 +88,7 @@ class NexusAgentReliabilityTest {
         assertEquals(1, calls)
         assertTrue(
             execution.steps.any {
-                it.step == "verify" && it.message.contains("maximum attempts reached")
+                it.step == "verify" && it.output.contains("maximum attempts reached")
             }
         )
     }
