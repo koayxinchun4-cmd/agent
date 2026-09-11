@@ -4,7 +4,8 @@ import java.io.File
 
 class SkillRegistry(
     private val rootDirectory: File,
-    private val provenanceStore: SkillProvenanceStore = SkillProvenanceStore(rootDirectory)
+    private val provenanceStore: SkillProvenanceStore = SkillProvenanceStore(rootDirectory),
+    private val licenseGate: SkillLicenseGate = SkillLicenseGate()
 ) {
     fun list(): List<SkillDocument> = skillFiles()
         .mapNotNull { file -> runCatching { read(file) }.getOrNull() }
@@ -43,6 +44,9 @@ class SkillRegistry(
 
     fun install(id: String, content: String, provenance: SkillProvenance): SkillDocument {
         require(provenance.skillId == id) { "provenance skill id mismatch" }
+        require(licenseGate.evaluate(provenance.license) == SkillLicenseGate.Decision.ALLOWED) {
+            "skill license requires review before installation"
+        }
         require(SkillIntegrity.verify(content, provenance.contentSha256)) {
             "skill content integrity check failed"
         }
