@@ -39,30 +39,53 @@ class NexusAgent(
 
         val toolId = plan.toolId
         if (toolId == null) {
-            val provider = modelProviders.get(plan.route)
-                ?.takeIf { it.isAvailable }
-                ?: modelProviders.get(ModelRoute.Local)
-            if (provider == null) {
+            val fallbackRoutes = modelProviders.fallbackRoutes(plan.route)
+            if (fallbackRoutes.isEmpty()) {
                 val result = AgentResult.Failure("No model provider is available")
                 emit(AgentStepResult("answer", false, result.message))
                 return AgentExecution(plan, steps, result)
             }
 
-            return try {
-                emit(AgentStepResult("model:${provider.id}", true, "Generating response"))
-                val response = provider.generate(currentTask.input)
-                val result = AgentResult.Success(response.text)
-                emit(AgentStepResult("verify", true, "Response generated successfully"))
-                emit(AgentStepResult("answer", true, result.text))
-                AgentExecution(plan, steps, result)
-            } catch (error: Throwable) {
-                val result = AgentResult.Failure(
-                    "Model provider failed: ${error.message ?: error::class.simpleName}",
-                    error
-                )
-                emit(AgentStepResult("answer", false, result.message))
-                AgentExecution(plan, steps, result)
+            var lastError: Throwable? = null
+            for ((index, route) in fallbackRoutes.withIndex()) {
+                val provider = modelProviders.get(route) ?: continue
+                if (route != plan.route) {
+                    plan = plan.copy(route = route)
+                    emit(
+                        AgentStepResult(
+                            "fallback:${provider.id}",
+                            true,
+                            "Primary model unavailable; falling back to ${provider.id}"
+                        )
+                    )
+                }
+                try {
+                    emit(AgentStepResult("model:${provider.id}", true, "Generating response"))
+                    val response = provider.generate(currentTask.input)
+                    val result = AgentResult.Success(response.text)
+                    emit(AgentStepResult("verify", true, "Response generated successfully"))
+                    emit(AgentStepResult("answer", true, result.text))
+                    return AgentExecution(plan, steps, result)
+                } catch (error: Throwable) {
+                    lastError = error
+                    if (index < fallbackRoutes.lastIndex) {
+                        emit(
+                            AgentStepResult(
+                                "model:${provider.id}",
+                                false,
+                                "Provider failed; trying next available provider"
+                            )
+                        )
+                    }
+                }
             }
+
+            val result = AgentResult.Failure(
+                "All available model providers failed: ${lastError?.message ?: "unknown error"}",
+                lastError
+            )
+            emit(AgentStepResult("answer", false, result.message))
+            return AgentExecution(plan, steps, result)
         }
 
         var lastResult: ToolResult = ToolResult.Failure("Tool has not executed")
