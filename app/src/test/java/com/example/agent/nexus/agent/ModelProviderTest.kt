@@ -30,10 +30,12 @@ class ModelProviderTest {
             taskId = "task-123",
             metadata = mapOf("source" to "test")
         )
-        val response = RecordingProvider().generate(request)
+        val recordingProvider = RecordingProvider()
+        recordingProvider.generate(request)
+        val recorded = recordingProvider.responseForLastRequest()
 
-        assertEquals("task-123", response.taskId)
-        assertEquals("test", response.metadata["source"])
+        assertEquals("task-123", recorded.taskId)
+        assertEquals("test", recorded.metadata["source"])
     }
 
     @Test
@@ -94,7 +96,7 @@ class ModelProviderTest {
         override val id: String = "recording"
         override val route: ModelRoute = ModelRoute.Local
         override val isAvailable: Boolean = true
-        var lastRequest: ModelRequest? = null
+        private var lastRequest: ModelRequest? = null
 
         override suspend fun generate(request: ModelRequest): ModelResponse {
             lastRequest = request
