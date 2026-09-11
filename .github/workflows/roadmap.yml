@@ -1,31 +1,19 @@
-name: Nexus Roadmap
+name: Legacy Nexus Roadmap (Manual)
 
 on:
   workflow_dispatch:
     inputs:
       auto_fix_attempts:
-        description: "Verification retry count (no automatic source edits are performed)"
+        description: "Legacy verification retry count (no automatic source edits are performed)"
         required: false
         default: "1"
         type: string
-  push:
-    branches:
-      - main
-    paths:
-      - "app/**"
-      - "docs/**"
-      - ".github/workflows/**"
-      - "gradle/**"
-      - "gradlew"
-      - "gradle.properties"
-      - "settings.gradle.kts"
-      - "build.gradle.kts"
 
 permissions:
   contents: read
 
 concurrency:
-  group: nexus-roadmap-${{ github.ref }}
+  group: legacy-nexus-roadmap-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -158,22 +146,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "Phase 5 requires implemented Web Research, Office Agent, and GitHub Agent capabilities."
-          echo "Documentation or workflow files alone do not count as implementation evidence."
+          echo "Legacy Phase 5 verification: Web Research, Office Agent, and GitHub Agent."
           web_count=$(find app/src/main -type f \( -iname '*Web*' -o -iname '*Research*' \) | wc -l)
           office_count=$(find app/src/main -type f \( -iname '*Office*' -o -iname '*Document*' -o -iname '*Spreadsheet*' \) | wc -l)
           github_count=$(find app/src/main -type f -iname '*GitHub*' | wc -l)
           test "$web_count" -gt 0
           test "$office_count" -gt 0
           test "$github_count" -gt 0
-          echo "Web implementation files: $web_count"
-          echo "Office implementation files: $office_count"
-          echo "GitHub implementation files: $github_count"
       - name: Phase 5 unit tests
         run: ./gradlew :app:testDebugUnitTest
 
   phase-6:
-    name: "Phase 6 - Nexus Experience"
+    name: "Phase 6 - Nexus Experience (Legacy)"
     needs: phase-5
     runs-on: ubuntu-latest
     steps:
@@ -181,19 +165,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
-      - name: Verify AI Moments and AI Community implementation
+      - name: Verify legacy experience markers
         shell: bash
         run: |
           set -euo pipefail
-          echo "Phase 6 requires implemented AI Moments and AI Community features."
           moments_count=$(find app/src/main -type f \( -iname '*Moment*' -o -iname '*Community*' -o -iname '*Social*' \) | wc -l)
           test "$moments_count" -gt 0
-          echo "Phase 6 implementation files: $moments_count"
       - name: Phase 6 unit tests
         run: ./gradlew :app:testDebugUnitTest
 
   phase-7:
-    name: "Phase 7 - Voice + Optimization"
+    name: "Phase 7 - Voice + Optimization (Legacy)"
     needs: phase-6
     runs-on: ubuntu-latest
     steps:
@@ -201,19 +183,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
-      - name: Verify Voice implementation
+      - name: Verify legacy voice marker
         shell: bash
         run: |
           set -euo pipefail
-          echo "Phase 7 requires implemented STT, TTS, and optimization work."
           voice_count=$(find app/src/main -type f \( -iname '*Voice*' -o -iname '*Speech*' -o -iname '*Tts*' -o -iname '*Stt*' \) | wc -l)
           test "$voice_count" -gt 0
-          echo "Voice implementation files: $voice_count"
-      - name: Final verification (no APK packaging)
+      - name: Legacy final verification
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug
 
   roadmap-all:
-    name: "Roadmap ALL"
+    name: "Legacy Roadmap ALL"
     needs:
       - phase-1
       - phase-2
@@ -224,5 +204,5 @@ jobs:
       - phase-7
     runs-on: ubuntu-latest
     steps:
-      - name: Roadmap ALL Green
-        run: echo "Nexus Roadmap Phase 1-7 are Green. APK packaging remains a separate release step."
+      - name: Legacy Roadmap ALL Green
+        run: echo "Legacy Nexus Roadmap Phase 1-7 are Green. This workflow is historical and manual-only."
