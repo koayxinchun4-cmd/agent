@@ -33,14 +33,15 @@ class TaskViewModel(
 
     private var executionJob: Job? = null
 
-    fun startTask(input: String) {
+    fun startTask(input: String, metadata: Map<String, String> = emptyMap()) {
         val prompt = input.trim()
         if (prompt.isEmpty()) return
 
         executionJob?.cancel()
         val task = AgentTask(
             id = UUID.randomUUID().toString(),
-            input = prompt
+            input = prompt,
+            metadata = metadata
         )
         _uiState.value = TaskUiState.Running(task)
 
