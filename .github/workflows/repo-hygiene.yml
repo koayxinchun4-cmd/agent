@@ -1,10 +1,8 @@
 name: Repository Hygiene
 
+# Temporarily parked: keep Android CI as the only automatic workflow while stabilizing failures.
+# Restore push / pull_request triggers after CI error rate improves.
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:
