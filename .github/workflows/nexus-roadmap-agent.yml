@@ -1,0 +1,138 @@
+name: Nexus Roadmap Auto Execution
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: Roadmap phase to execute
+        required: true
+        default: all
+        type: choice
+        options: [all, phase1, phase2, phase3, phase4, phase5, phase6, phase7]
+      auto_fix_attempts:
+        description: Maximum repair passes per phase
+        required: true
+        default: '3'
+        type: choice
+        options: ['1', '2', '3']
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: nexus-roadmap-agent-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  roadmap:
+    name: Execute Nexus Roadmap
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: temurin
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Make Gradle Wrapper executable
+        run: chmod +x ./gradlew
+      - name: Verify roadmap source
+        run: test -f docs/NEXUS_FEATURE_ARCHITECTURE_AND_HISTORY.md
+      - name: Phase 1 - Nexus Foundation
+        if: ${{ inputs.phase == 'all' || inputs.phase == 'phase1' }}
+        uses: mirrajabi/aider-github-action@v1.1.0
+        with:
+          api_key_env_name: GEMINI_API_KEY
+          api_key_env_value: ${{ secrets.GEMINI_API_KEY }}
+          model: gemini/gemini-2.5-flash
+          branch: ${{ github.ref_name }}
+          aider_args: >-
+            --yes --message "Read the roadmap and execute Phase 1 completely and conservatively. Preserve working behavior, no Root, safe Android APIs, and existing language support. Do not add secrets. Commit changes."
+      - name: Phase 1 verification
+        run: ./gradlew test lint --no-daemon --stacktrace
+      - name: Phase 2 - Real Agent
+        if: ${{ inputs.phase == 'all' || inputs.phase == 'phase2' }}
+        uses: mirrajabi/aider-github-action@v1.1.0
+        with:
+          api_key_env_name: GEMINI_API_KEY
+          api_key_env_value: ${{ secrets.GEMINI_API_KEY }}
+          model: gemini/gemini-2.5-flash
+          branch: ${{ github.ref_name }}
+          aider_args: >-
+            --yes --message "Read the roadmap and execute Phase 2 Real Agent: intent detection, task decomposition, Planner, Tool/Skill selection, model provider routing, execution, verification, retry/recovery, re-planning where practical, and user confirmation/waiting states. Preserve Agent Task and working tools. Add focused tests. Commit changes."
+      - name: Phase 2 verification
+        run: ./gradlew test lint --no-daemon --stacktrace
+      - name: Phase 3 - Mobile Agent
+        if: ${{ inputs.phase == 'all' || inputs.phase == 'phase3' }}
+        uses: mirrajabi/aider-github-action@v1.1.0
+        with:
+          api_key_env_name: GEMINI_API_KEY
+          api_key_env_value: ${{ secrets.GEMINI_API_KEY }}
+          model: gemini/gemini-2.5-flash
+          branch: ${{ github.ref_name }}
+          aider_args: >-
+            --yes --message "Read the roadmap and execute Phase 3 Mobile Agent using official Android APIs and explicit permissions: File Agent, App Agent, Web Research foundations, notification/system integration. Preserve no-root and permission boundaries. Add tests. Commit changes."
+      - name: Phase 3 verification
+        run: ./gradlew test lint --no-daemon --stacktrace
+      - name: Phase 4 - Skills and Memory
+        if: ${{ inputs.phase == 'all' || inputs.phase == 'phase4' }}
+        uses: mirrajabi/aider-github-action@v1.1.0
+        with:
+          api_key_env_name: GEMINI_API_KEY
+          api_key_env_value: ${{ secrets.GEMINI_API_KEY }}
+          model: gemini/gemini-2.5-flash
+          branch: ${{ github.ref_name }}
+          aider_args: >-
+            --yes --message "Read the roadmap and execute Phase 4 Skills + Memory: mature SKILL.md parsing, provenance/security checks, and layered local Agent Memory using Room. Preserve privacy and license metadata. Add tests. Commit changes."
+      - name: Phase 4 verification
+        run: ./gradlew test lint --no-daemon --stacktrace
+      - name: Phase 5 - Web Office GitHub
+        if: ${{ inputs.phase == 'all' || inputs.phase == 'phase5' }}
+        uses: mirrajabi/aider-github-action@v1.1.0
+        with:
+          api_key_env_name: GEMINI_API_KEY
+          api_key_env_value: ${{ secrets.GEMINI_API_KEY }}
+          model: gemini/gemini-2.5-flash
+          branch: ${{ github.ref_name }}
+          aider_args: >-
+            --yes --message "Read the roadmap and execute Phase 5 Web/Office/GitHub: mature Web Research, Agent Studio/Workflow Studio, GitHub repositories/files/issues/PRs/Actions, and safe Office automation boundaries. Use least privilege and explicit confirmation for writes. Add tests. Commit changes."
+      - name: Phase 5 verification
+        run: ./gradlew test lint --no-daemon --stacktrace
+      - name: Phase 6 - AI Moments and AI 朋友圈
+        if: ${{ inputs.phase == 'all' || inputs.phase == 'phase6' }}
+        uses: mirrajabi/aider-github-action@v1.1.0
+        with:
+          api_key_env_name: GEMINI_API_KEY
+          api_key_env_value: ${{ secrets.GEMINI_API_KEY }}
+          model: gemini/gemini-2.5-flash
+          branch: ${{ github.ref_name }}
+          aider_args: >-
+            --yes --message "Read the roadmap and execute Phase 6 AI Moments and AI 朋友圈 foundations. Keep private Memory separate from public content; never expose private data automatically. Add tests. Commit changes."
+      - name: Phase 6 verification
+        run: ./gradlew test lint --no-daemon --stacktrace
+      - name: Phase 7 - Voice and Advanced Agent
+        if: ${{ inputs.phase == 'all' || inputs.phase == 'phase7' }}
+        uses: mirrajabi/aider-github-action@v1.1.0
+        with:
+          api_key_env_name: GEMINI_API_KEY
+          api_key_env_value: ${{ secrets.GEMINI_API_KEY }}
+          model: gemini/gemini-2.5-flash
+          branch: ${{ github.ref_name }}
+          aider_args: >-
+            --yes --message "Read the roadmap and execute Phase 7 advanced capabilities supported by the repository: Voice input/output, deeper Android integration, multi-model/local asset architecture, and agent collaboration. Keep phone-only/no-root, privacy, permission, and fallback boundaries. Do not embed large local models in the core APK. Add tests. Commit changes."
+      - name: Phase 7 verification
+        run: ./gradlew test lint --no-daemon --stacktrace
+      - name: Roadmap final verification
+        if: ${{ inputs.phase == 'all' }}
+        run: ./gradlew test lint --no-daemon --stacktrace
