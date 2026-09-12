@@ -30,12 +30,13 @@ class NexusAgent(
         onProgress: (AgentProgress) -> Unit = {}
     ): AgentExecution {
         var currentTask = task
+        val projectId = task.metadata[AgentTask.PROJECT_ID]
         val executionContext = AgentExecutionContext(
             taskId = task.id,
-            projectId = task.metadata["project_id"],
+            projectId = projectId,
             memory = memoryContextProvider.load(
                 taskId = task.id,
-                projectId = task.metadata["project_id"]
+                projectId = projectId
             ),
             metadata = task.metadata
         )
