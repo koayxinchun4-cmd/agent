@@ -121,6 +121,14 @@ Track/recover as appropriate:
 - web research, App Agent, notification/system integration, voice
 - AI Moments / AI 朋友圈 future experience ideas
 
+Coding-agent integrations should be treated as interchangeable backends rather than hard-coded product identities:
+
+- **Aider**: currently integrated through GitHub Actions and intended for repository-level Issue/code tasks when explicitly triggered with `@aider`.
+- **cto.new**: installed as a GitHub App at the account level, but no repository workflow or direct execution integration is currently confirmed in Nexus.
+- **Codex**: retained as a repository/coding capability and external coding-agent option, but no Nexus-owned workflow currently confirms direct automatic repository modification by Codex.
+
+Do not describe cto.new or Codex as currently executing Nexus repository code changes unless live repository configuration confirms it.
+
 ## 8. Skills policy
 
 Nexus can learn from public GitHub Skills only through a deliberate pipeline:
@@ -177,8 +185,74 @@ Backend remains optional. Local-first is the default direction.
 
 ## 13. CI/release rules
 
-- CI is only called green when the actual GitHub Actions run reports success.
-- On failure: inspect exact run/job/step/log, fix the confirmed blocker, rerun, and verify again.
+Nexus uses CI/CD as the verification and delivery backbone for repository changes.
+
+### CI — Continuous Integration（持續整合）
+
+CI should verify repository changes after push/PR and may include:
+
+- Gradle build
+- Unit tests
+- Lint
+- Security analysis
+- APK/artifact validation
+
+CI is only called green when the actual GitHub Actions run reports success.
+
+### AI-assisted CI recovery
+
+For coding tasks, the intended automation loop is:
+
+`Issue/task → Coding Agent → repository change → CI → failure analysis → bounded AI repair → CI again → green`
+
+Aider is currently the confirmed repository-level coding backend in Nexus. cto.new and Codex are supported/considered external coding-agent backends, but their direct Nexus repository execution must not be assumed without live configuration.
+
+If CI fails:
+1. Inspect the exact run/job/step/log.
+2. Identify the confirmed blocker.
+3. Apply a targeted fix through the selected coding backend.
+4. Rerun CI.
+5. Continue only after verification succeeds or the bounded repair budget is exhausted.
+
+AI repair loops must be bounded and must not silently auto-merge changes into `main`.
+
+### CD — Continuous Delivery/Deployment（持續交付／部署）
+
+After CI is green, CD may handle delivery such as:
+
+- APK/AAB artifacts
+- release packaging
+- GitHub Pages or other configured deployment targets
+- future release automation
+
+Production/release publication should remain explicitly controlled by repository policy and permissions. CI success does not by itself authorize an irreversible production deployment.
+
+### Overall repository workflow
+
+```text
+GitHub Issue / task
+        ↓
+Nexus Agent
+        ↓
+Coding backend
+(Aider / cto.new / Codex / future backends)
+        ↓
+Repository change
+        ↓
+CI
+(Build / Test / Lint / Security)
+        ↓
+ ┌──────┴──────┐
+ ↓             ↓
+Fail          Green
+ ↓             ↓
+AI analyze     CD
+ ↓             ↓
+AI fix         APK / Release / Deploy
+ ↓
+CI again
+```
+
 - Do not rely on old chat memory for live CI status.
 - Keep Gradle `versionName`/`versionCode` aligned with release tags in a future release-automation cleanup.
 
