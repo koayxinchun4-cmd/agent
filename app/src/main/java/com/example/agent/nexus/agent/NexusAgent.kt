@@ -1,5 +1,8 @@
 package com.example.agent.nexus.agent
 
+import com.example.agent.nexus.memory.AgentExecutionContext
+import com.example.agent.nexus.memory.DefaultMemoryContextProvider
+import com.example.agent.nexus.memory.MemoryContextProvider
 import com.example.agent.nexus.tool.ToolRegistry
 import com.example.agent.nexus.tool.ToolResult
 
@@ -16,7 +19,8 @@ class NexusAgent(
     private val recoveryPolicy: AgentRecoveryPolicy = AgentRecoveryPolicy(),
     private val modelProviders: ModelProviderRegistry = ModelProviderRegistry(
         listOf(LocalModelProvider())
-    )
+    ),
+    private val memoryContextProvider: MemoryContextProvider = DefaultMemoryContextProvider()
 ) {
     suspend fun execute(task: AgentTask): AgentResult =
         executeDetailed(task).result
@@ -26,6 +30,15 @@ class NexusAgent(
         onProgress: (AgentProgress) -> Unit = {}
     ): AgentExecution {
         var currentTask = task
+        val executionContext = AgentExecutionContext(
+            taskId = task.id,
+            projectId = task.metadata["project_id"],
+            memory = memoryContextProvider.load(
+                taskId = task.id,
+                projectId = task.metadata["project_id"]
+            ),
+            metadata = task.metadata
+        )
         var plan = planAndRoute(currentTask)
         val steps = mutableListOf<AgentStepResult>()
 
@@ -35,6 +48,7 @@ class NexusAgent(
         }
 
         emit(AgentStepResult("understand_request", true, "Request understood"))
+        emit(AgentStepResult("memory_context", true, "Loaded ${executionContext.memory.items.size} memory item(s)"))
         emit(AgentStepResult("plan", true, "Selected ${plan.toolId ?: "direct answer"} execution path"))
 
         val toolId = plan.toolId
@@ -43,7 +57,7 @@ class NexusAgent(
             if (fallbackRoutes.isEmpty()) {
                 val result = AgentResult.Failure("No model provider is available")
                 emit(AgentStepResult("answer", false, result.message))
-                return AgentExecution(plan, steps, result)
+                return AgentExecution(plan, steps, result, context = executionContext)
             }
 
             var lastError: Throwable? = null
@@ -71,7 +85,7 @@ class NexusAgent(
                     val result = AgentResult.Success(response.text)
                     emit(AgentStepResult("verify", true, "Response generated successfully"))
                     emit(AgentStepResult("answer", true, result.text))
-                    return AgentExecution(plan, steps, result)
+                    return AgentExecution(plan, steps, result, context = executionContext)
                 } catch (error: Throwable) {
                     lastError = error
                     if (index < fallbackRoutes.lastIndex) {
@@ -91,7 +105,7 @@ class NexusAgent(
                 lastError
             )
             emit(AgentStepResult("answer", false, result.message))
-            return AgentExecution(plan, steps, result)
+            return AgentExecution(plan, steps, result, context = executionContext)
         }
 
         var lastResult: ToolResult = ToolResult.Failure("Tool has not executed")
@@ -110,7 +124,7 @@ class NexusAgent(
                     )
                     emit(AgentStepResult("verify", true, "Verification passed"), attempts)
                     emit(AgentStepResult("answer", true, result.text), attempts)
-                    return AgentExecution(plan, steps, result, attempts)
+                    return AgentExecution(plan, steps, result, attempts, executionContext)
                 }
 
                 is VerificationResult.Retry -> {
@@ -179,7 +193,7 @@ class NexusAgent(
             (lastResult as? ToolResult.Failure)?.cause
         )
         emit(AgentStepResult("answer", false, result.message), attempts)
-        return AgentExecution(plan, steps, result, attempts)
+        return AgentExecution(plan, steps, result, attempts, executionContext)
     }
 
     private fun planAndRoute(task: AgentTask): AgentPlan {
