@@ -3,6 +3,7 @@ package com.example.agent.nexus.io
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ChannelContractTest {
@@ -20,16 +21,35 @@ class ChannelContractTest {
 
         channel.send(AgentResponse("hello"))
 
-        assertEquals("hello", channel.lastResponse?.content)
+        assertEquals("hello", channel.responses.single().content)
     }
 
     @Test
-    fun outputChannelCanAggregateStreamingChunks() = runBlocking {
+    fun outputChannelForwardsStreamingChunksIncrementally() = runBlocking {
         val channel = FakeOutputChannel()
 
         channel.sendStream(flowOf("Hel", "lo"))
 
-        assertEquals("Hello", channel.lastResponse?.content)
+        assertEquals(listOf("Hel", "lo"), channel.responses.map { it.content })
+    }
+
+    @Test
+    fun defaultStreamingContractUsesSendForEachChunk() = runBlocking {
+        val channel = FakeOutputChannel()
+
+        channel.sendStream(flowOf("one", "two", "three"))
+
+        assertEquals(listOf("one", "two", "three"), channel.responses.map { it.content })
+    }
+
+    @Test
+    fun textOutputChannelForwardsChunksAsTheyArrive() = runBlocking {
+        val received = mutableListOf<String>()
+        val channel = TextOutputChannel { response -> received += response.content }
+
+        channel.sendStream(flowOf("A", "B", "C"))
+
+        assertEquals(listOf("A", "B", "C"), received)
     }
 
     private class FakeInputChannel(
@@ -41,10 +61,10 @@ class ChannelContractTest {
 
     private class FakeOutputChannel : OutputChannel {
         override val id: String = "fake-output"
-        var lastResponse: AgentResponse? = null
+        val responses = mutableListOf<AgentResponse>()
 
         override suspend fun send(response: AgentResponse) {
-            lastResponse = response
+            responses += response
         }
     }
 }
