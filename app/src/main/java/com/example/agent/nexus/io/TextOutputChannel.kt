@@ -11,4 +11,8 @@ class TextOutputChannel(
     override suspend fun send(response: AgentResponse) {
         sink(response)
     }
+
+    override suspend fun sendChunk(chunk: String) {
+        sink(AgentResponse(content = chunk))
+    }
 }
