@@ -16,6 +16,7 @@ class AgentPlanner(
         }
         val toolId = subtaskToolIds.firstOrNull { it != null }
             ?: toolForIntent(intent, availableToolIds)
+            ?: "local_task".takeIf(availableToolIds::contains)
 
         val steps = buildList {
             add("understand_request")
@@ -52,5 +53,5 @@ class AgentPlanner(
         AgentIntent.WebResearch -> "web_research".takeIf(availableToolIds::contains)
         AgentIntent.File -> "file_agent".takeIf(availableToolIds::contains)
         AgentIntent.General -> null
-    } ?: "local_task".takeIf(availableToolIds::contains)
+    }
 }
