@@ -6,7 +6,8 @@ data class AgentPlan(
     val toolId: String? = null,
     val route: ModelRoute = ModelRoute.Local,
     val steps: List<String> = listOf("answer"),
-    val subtasks: List<String> = emptyList()
+    val subtasks: List<String> = emptyList(),
+    val subtaskToolIds: List<String?> = emptyList()
 )
 
 enum class ModelRoute {

@@ -49,18 +49,23 @@ class AgentPlannerTest {
     }
 
     @Test
-    fun `exposes ordered subtasks for a multi-step goal`() {
+    fun `exposes ordered subtasks and per-subtask tools`() {
         val plan = planner.plan(
             AgentTask("5", "搜尋 repo then 檢查 CI then 整理結果"),
-            setOf("web_research", "local_task")
+            setOf("web_research", "github", "local_task")
         )
 
         assertEquals(
             listOf("搜尋 repo", "檢查 CI", "整理結果"),
             plan.subtasks
         )
-        assertTrue(plan.steps[1].startsWith("subtask:1:"))
-        assertTrue(plan.steps[2].startsWith("subtask:2:"))
-        assertTrue(plan.steps[3].startsWith("subtask:3:"))
+        assertEquals(listOf("web_research", "github", null), plan.subtaskToolIds)
+        assertEquals("web_research", plan.toolId)
+        assertEquals("subtask:1:搜尋 repo", plan.steps[1])
+        assertEquals("use_tool:web_research", plan.steps[2])
+        assertEquals("subtask:2:檢查 CI", plan.steps[3])
+        assertEquals("use_tool:github", plan.steps[4])
+        assertEquals("subtask:3:整理結果", plan.steps[5])
+        assertTrue(plan.steps.last() == "answer")
     }
 }

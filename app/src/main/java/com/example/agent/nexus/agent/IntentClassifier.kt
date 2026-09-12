@@ -12,7 +12,7 @@ class IntentClassifier {
 
         return when {
             isAppRequest(normalized) -> AgentIntent.App
-            containsAny(normalized, "github", "pull request", "issue", "ci/cd") -> AgentIntent.GitHub
+            containsAny(normalized, "github", "pull request", "issue", "ci/cd", "ci") -> AgentIntent.GitHub
             containsAny(normalized, "office", "document", "spreadsheet", "presentation") ||
                 containsAny(input, "簡報", "試算表") -> AgentIntent.Office
             containsAny(normalized, "memory", "remember", "forget") || containsAny(input, "記憶", "記住") -> AgentIntent.Memory
