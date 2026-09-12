@@ -1,6 +1,6 @@
 package com.example.agent.nexus.memory
 
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -22,7 +22,7 @@ class AgentMemoryContextTest {
     }
 
     @Test
-    fun providerContractExposesContextWithoutStorageDetails() = runTest {
+    fun providerContractExposesContextWithoutStorageDetails() = runBlocking {
         val provider = object : MemoryContextProvider {
             override suspend fun load(taskId: String?, projectId: String?): AgentMemoryContext =
                 AgentMemoryContext(
