@@ -12,7 +12,7 @@ import org.junit.Test
 class NexusAgentConfirmationTest {
     private fun agent(): NexusAgent {
         val tool = object : AgentTool {
-            override val id = "risky"
+            override val id = "app_agent"
             override val name = "Risky Tool"
             override val description = "A tool that changes something"
             override val riskLevel = RiskLevel.REQUIRES_CONFIRMATION
@@ -23,14 +23,14 @@ class NexusAgentConfirmationTest {
 
     @Test
     fun preview_requests_confirmation_before_execution() {
-        val request = agent().previewConfirmation(AgentTask("confirmation-1", "do it"))
+        val request = agent().previewConfirmation(AgentTask("confirmation-1", "open app"))
         assertNotNull(request)
-        assertEquals("risky", request?.tool?.id)
+        assertEquals("app_agent", request?.tool?.id)
     }
 
     @Test
     fun confirmed_task_skips_confirmation_preflight() {
-        val task = AgentTask("confirmation-2", "do it", mapOf(AgentTask.CONFIRMATION_GRANTED to "true"))
+        val task = AgentTask("confirmation-2", "open app", mapOf(AgentTask.CONFIRMATION_GRANTED to "true"))
         assertNull(agent().previewConfirmation(task))
     }
 }
