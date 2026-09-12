@@ -22,6 +22,16 @@ class IntentClassifierTest {
     }
 
     @Test
+    fun `classifies simplified chinese web intent`() {
+        assertEquals(AgentIntent.WebResearch, classifier.classify("搜索這個主題的資料"))
+    }
+
+    @Test
+    fun `classifies traditional chinese file intent`() {
+        assertEquals(AgentIntent.File, classifier.classify("讀取文件 note.txt"))
+    }
+
+    @Test
     fun `classifies traditional chinese memory intent`() {
         assertEquals(AgentIntent.Memory, classifier.classify("記住這個偏好"))
     }
