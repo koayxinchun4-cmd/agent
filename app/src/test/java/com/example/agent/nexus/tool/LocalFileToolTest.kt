@@ -34,6 +34,19 @@ class LocalFileToolTest {
     }
 
     @Test
+    fun readsFileWithEnglishRequest() = runBlocking {
+        val root = Files.createTempDirectory("nexus-file-tool").toFile()
+        root.resolve("note.txt").writeText("hello nexus")
+
+        val result = LocalFileTool(root).execute(
+            AgentTask("test", "read note.txt")
+        )
+
+        assertTrue(result is ToolResult.Success)
+        assertTrue((result as ToolResult.Success).text.contains("hello nexus"))
+    }
+
+    @Test
     fun blocksPathTraversal() = runBlocking {
         val root = Files.createTempDirectory("nexus-file-tool").toFile()
         val outside = root.parentFile.resolve("outside.txt")
