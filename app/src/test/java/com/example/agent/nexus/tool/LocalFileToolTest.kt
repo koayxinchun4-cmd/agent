@@ -58,4 +58,14 @@ class LocalFileToolTest {
 
         assertTrue(result is ToolResult.Failure)
     }
+
+    @Test
+    fun blocksAbsolutePath() = runBlocking {
+        val root = Files.createTempDirectory("nexus-file-tool").toFile()
+        val result = LocalFileTool(root).execute(
+            AgentTask("test", "read /etc/hosts")
+        )
+
+        assertTrue(result is ToolResult.Failure)
+    }
 }
