@@ -3,6 +3,7 @@ package com.example.agent.nexus.agent
 import com.example.agent.nexus.memory.AgentExecutionContext
 import com.example.agent.nexus.memory.DefaultMemoryContextProvider
 import com.example.agent.nexus.memory.MemoryContextProvider
+import com.example.agent.nexus.tool.RiskLevel
 import com.example.agent.nexus.tool.ToolRegistry
 import com.example.agent.nexus.tool.ToolResult
 
@@ -24,6 +25,19 @@ class NexusAgent(
 ) {
     suspend fun execute(task: AgentTask): AgentResult =
         executeDetailed(task).result
+
+    /**
+     * Preflight the planned tool before execution so the UI can request explicit
+     * user confirmation without invoking the tool first.
+     */
+    fun previewConfirmation(task: AgentTask): AgentConfirmationRequest? {
+        if (task.metadata[AgentTask.CONFIRMATION_GRANTED] == "true") return null
+        val plan = planAndRoute(task)
+        val toolId = plan.toolId ?: return null
+        val tool = toolRegistry.get(toolId) ?: return null
+        return tool.takeIf { it.riskLevel == RiskLevel.REQUIRES_CONFIRMATION }
+            ?.let { AgentConfirmationRequest(task = task, tool = it, plan = plan) }
+    }
 
     suspend fun executeDetailed(
         task: AgentTask,
@@ -66,13 +80,7 @@ class NexusAgent(
                 val provider = modelProviders.get(route) ?: continue
                 if (route != plan.route) {
                     plan = plan.copy(route = route)
-                    emit(
-                        AgentStepResult(
-                            "fallback:${provider.id}",
-                            true,
-                            "Primary model unavailable; falling back to ${provider.id}"
-                        )
-                    )
+                    emit(AgentStepResult("fallback:${provider.id}", true, "Primary model unavailable; falling back to ${provider.id}"))
                 }
                 try {
                     emit(AgentStepResult("model:${provider.id}", true, "Generating response"))
@@ -90,13 +98,7 @@ class NexusAgent(
                 } catch (error: Throwable) {
                     lastError = error
                     if (index < fallbackRoutes.lastIndex) {
-                        emit(
-                            AgentStepResult(
-                                "model:${provider.id}",
-                                false,
-                                "Provider failed; trying next available provider"
-                            )
-                        )
+                        emit(AgentStepResult("model:${provider.id}", false, "Provider failed; trying next available provider"))
                     }
                 }
             }
@@ -145,8 +147,7 @@ class NexusAgent(
                         attempts
                     )
 
-                    val canRetry = attempts < loopConfig.maxAttempts &&
-                        diagnosis is FailureDiagnosis.Transient
+                    val canRetry = attempts < loopConfig.maxAttempts && diagnosis is FailureDiagnosis.Transient
                     if (!canRetry) {
                         emit(
                             AgentStepResult(
@@ -165,22 +166,8 @@ class NexusAgent(
 
                     currentTask = recoveryPolicy.adjust(currentTask, diagnosis, attempts)
                     plan = planAndRoute(currentTask)
-                    emit(
-                        AgentStepResult(
-                            "adjust_plan",
-                            true,
-                            "Adjusted input for recovery attempt ${attempts + 1}"
-                        ),
-                        attempts
-                    )
-                    emit(
-                        AgentStepResult(
-                            "verify",
-                            false,
-                            "Recovery prepared; retrying"
-                        ),
-                        attempts
-                    )
+                    emit(AgentStepResult("adjust_plan", true, "Adjusted input for recovery attempt ${attempts + 1}"), attempts)
+                    emit(AgentStepResult("verify", false, "Recovery prepared; retrying"), attempts)
                 }
             }
         }
@@ -203,8 +190,7 @@ class NexusAgent(
             availableToolIds = toolRegistry.list().map { it.id }.toSet()
         )
         val routedPlan = initialPlan.copy(route = modelRouter.route(task, initialPlan))
-        val provider = modelProviders.get(routedPlan.route)
-            ?.takeIf { it.isAvailable }
+        val provider = modelProviders.get(routedPlan.route)?.takeIf { it.isAvailable }
             ?: modelProviders.get(ModelRoute.Local)
         return if (provider != null && provider.route != routedPlan.route) {
             routedPlan.copy(route = provider.route)
