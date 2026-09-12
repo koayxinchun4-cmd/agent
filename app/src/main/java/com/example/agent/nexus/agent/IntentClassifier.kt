@@ -14,10 +14,10 @@ class IntentClassifier {
             isAppRequest(normalized) -> AgentIntent.App
             containsAny(normalized, "github", "pull request", "issue", "ci/cd") -> AgentIntent.GitHub
             containsAny(normalized, "office", "document", "spreadsheet", "presentation") ||
-                containsAny(input, "簡報", "試算表", "文件") -> AgentIntent.Office
+                containsAny(input, "簡報", "試算表") -> AgentIntent.Office
             containsAny(normalized, "memory", "remember", "forget") || containsAny(input, "記憶", "記住") -> AgentIntent.Memory
             containsAny(normalized, "skill", "skills") || containsAny(input, "技能") -> AgentIntent.Skills
-            containsAny(normalized, "web", "search", "research") || containsAny(input, "網頁", "搜尋", "研究") -> AgentIntent.WebResearch
+            containsAny(normalized, "web", "search", "research") || containsAny(input, "網頁", "搜尋", "搜索", "研究") -> AgentIntent.WebResearch
             containsAny(normalized, "file", "files") || containsAny(input, "檔案", "文件") -> AgentIntent.File
             else -> AgentIntent.General
         }
