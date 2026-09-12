@@ -11,10 +11,13 @@ interface OutputChannel {
 
     suspend fun send(response: AgentResponse)
 
+    /** Delivers one generated chunk without waiting for the remaining chunks. */
+    suspend fun sendChunk(chunk: String) {
+        send(AgentResponse(content = chunk))
+    }
+
+    /** Forwards generated chunks incrementally as they arrive. */
     suspend fun sendStream(chunks: Flow<String>) {
-        val content = buildString {
-            chunks.collect { append(it) }
-        }
-        send(AgentResponse(content = content))
+        chunks.collect { chunk -> sendChunk(chunk) }
     }
 }
