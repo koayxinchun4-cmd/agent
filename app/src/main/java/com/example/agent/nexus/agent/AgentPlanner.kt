@@ -5,10 +5,12 @@ package com.example.agent.nexus.agent
  * is inspectable and can later be replaced by model-assisted planning.
  */
 class AgentPlanner(
-    private val intentClassifier: IntentClassifier = IntentClassifier()
+    private val intentClassifier: IntentClassifier = IntentClassifier(),
+    private val taskDecomposer: TaskDecomposer = TaskDecomposer()
 ) {
     fun plan(task: AgentTask, availableToolIds: Set<String> = emptySet()): AgentPlan {
         val intent = intentClassifier.classify(task.input)
+        val subtasks = taskDecomposer.decompose(task.input)
         val toolId = when (intent) {
             AgentIntent.App -> "app_agent".takeIf(availableToolIds::contains)
             AgentIntent.GitHub -> "github".takeIf(availableToolIds::contains)
@@ -20,17 +22,21 @@ class AgentPlanner(
             AgentIntent.General -> null
         } ?: "local_task".takeIf(availableToolIds::contains)
 
-        val steps = if (toolId == null) {
-            listOf("understand_request", "answer")
-        } else {
-            listOf("understand_request", "use_tool:$toolId", "answer")
+        val steps = buildList {
+            add("understand_request")
+            subtasks.forEachIndexed { index, subtask ->
+                add("subtask:${index + 1}:$subtask")
+            }
+            if (toolId != null) add("use_tool:$toolId")
+            add("answer")
         }
 
         return AgentPlan(
             taskId = task.id,
             toolId = toolId,
             route = ModelRoute.Local,
-            steps = steps
+            steps = steps,
+            subtasks = subtasks
         )
     }
 }
