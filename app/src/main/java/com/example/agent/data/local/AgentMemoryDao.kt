@@ -19,8 +19,14 @@ interface AgentMemoryDao {
     @Query("SELECT * FROM agent_memory WHERE key = :key ORDER BY timestamp DESC LIMIT 1")
     suspend fun findLatest(key: String): AgentMemory?
 
+    @Query("SELECT * FROM agent_memory WHERE key LIKE :prefix || '%' ORDER BY timestamp DESC")
+    suspend fun findByKeyPrefix(prefix: String): List<AgentMemory>
+
     @Query("SELECT * FROM agent_memory WHERE key LIKE '%' || :query || '%' OR value LIKE '%' || :query || '%' ORDER BY timestamp DESC LIMIT 20")
     suspend fun search(query: String): List<AgentMemory>
+
+    @Query("DELETE FROM agent_memory WHERE key = :key")
+    suspend fun deleteByKey(key: String)
 
     @Query("DELETE FROM agent_memory")
     suspend fun clearAll()
