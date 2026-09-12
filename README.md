@@ -2,6 +2,10 @@
 
 基于 **Android + Kotlin + Jetpack Compose + Google Gemini API** 的移动端 AI 智能助手项目。
 
+## 🎨 Nexus UI Mockup
+
+![Nexus UI Mockup](docs/images/nexus-ui-mockup.jpg)
+
 > **独立项目声明 / Independence Notice**
 >
 > Nexus AI 是一个独立开发的个人项目，**与 Marvis AI、MyNexusAI（https://app.mynexusai.com/）及其运营方、开发者或相关品牌不存在官方关联、合作、授权或隶属关系**。
@@ -138,6 +142,9 @@ CI 会在构建过程中临时生成 `.env`，不会要求把真实 API Key 写�
 │   │   ├── res/                    # Android 资源
 │   │   └── AndroidManifest.xml
 │   └── build.gradle.kts
+├── docs/
+│   └── images/
+│       └── nexus-ui-mockup.jpg     # Nexus UI Mockup
 ├── gradle/
 │   └── libs.versions.toml          # Version Catalog
 ├── .github/
