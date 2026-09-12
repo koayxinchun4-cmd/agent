@@ -3,6 +3,7 @@ package com.example.agent.nexus.memory
 import android.util.Base64
 import com.example.agent.data.local.AgentMemory
 import com.example.agent.data.local.AgentMemoryDao
+import java.io.StringWriter
 import java.util.Properties
 
 /**
@@ -76,9 +77,9 @@ class TaskMemoryStore(
             setProperty("value", value)
             setProperty("metadata", encodeMetadata(metadata))
         }
-        return buildString {
-            properties.store(this.writer(), null)
-        }
+        return StringWriter().also { writer ->
+            properties.store(writer, null)
+        }.toString()
     }
 
     private fun decode(value: String): Pair<String, Map<String, String>>? = runCatching {
@@ -91,7 +92,9 @@ class TaskMemoryStore(
     private fun encodeMetadata(metadata: Map<String, String>): String {
         val properties = Properties()
         metadata.forEach { (key, value) -> properties.setProperty(key, value) }
-        return Base64.encodeToString(properties.toByteArray(), Base64.NO_WRAP)
+        val writer = StringWriter()
+        properties.store(writer, null)
+        return Base64.encodeToString(writer.toString().toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
     }
 
     private fun decodeMetadata(value: String): Map<String, String> {
@@ -120,7 +123,3 @@ class TaskMemoryStore(
         const val PREFIX = "task.memory."
     }
 }
-
-private fun Properties.toByteArray(): ByteArray = buildString {
-    store(writer(), null)
-}.toByteArray(Charsets.ISO_8859_1)
