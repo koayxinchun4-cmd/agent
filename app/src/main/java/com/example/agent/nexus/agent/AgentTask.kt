@@ -8,5 +8,6 @@ data class AgentTask(
 ) {
     companion object {
         const val CONFIRMATION_GRANTED = "confirmation_granted"
+        const val PROJECT_ID = "project_id"
     }
 }
