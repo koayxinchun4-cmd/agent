@@ -1,6 +1,5 @@
 package com.example.agent.nexus.memory
 
-import android.util.Base64
 import com.example.agent.data.local.AgentMemory
 import com.example.agent.data.local.AgentMemoryDao
 import java.io.StringWriter
@@ -94,24 +93,35 @@ class TaskMemoryStore(
         metadata.forEach { (key, value) -> properties.setProperty(key, value) }
         val writer = StringWriter()
         properties.store(writer, null)
-        return Base64.encodeToString(writer.toString().toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        return encodeSegment(writer.toString())
     }
 
     private fun decodeMetadata(value: String): Map<String, String> {
         if (value.isBlank()) return emptyMap()
         return runCatching {
-            val properties = Properties().apply {
-                load(Base64.decode(value, Base64.NO_WRAP).inputStream())
-            }
+            val serialized = decodeSegment(value) ?: return emptyMap()
+            val properties = Properties().apply { load(serialized.reader()) }
             properties.stringPropertyNames().associateWith(properties::getProperty)
         }.getOrDefault(emptyMap())
     }
 
+    /**
+     * Hex encoding is intentionally used instead of an Android-specific API.
+     * It is deterministic, platform-neutral, and keeps storage segments free
+     * of '.' and '%' characters that could interfere with key parsing or LIKE.
+     */
     private fun encodeSegment(value: String): String =
-        Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.URL_SAFE or Base64.NO_WRAP)
+        value.toByteArray(Charsets.UTF_8).joinToString(separator = "") { byte ->
+            "%02x".format(byte.toInt() and 0xff)
+        }
 
     private fun decodeSegment(value: String): String? = runCatching {
-        String(Base64.decode(value, Base64.URL_SAFE or Base64.NO_WRAP), Charsets.UTF_8)
+        require(value.length % 2 == 0) { "hex value must have an even length" }
+        val bytes = ByteArray(value.length / 2)
+        value.chunked(2).forEachIndexed { index, pair ->
+            bytes[index] = pair.toInt(16).toByte()
+        }
+        String(bytes, Charsets.UTF_8)
     }.getOrNull()
 
     private fun validateScope(taskId: String, key: String) {
