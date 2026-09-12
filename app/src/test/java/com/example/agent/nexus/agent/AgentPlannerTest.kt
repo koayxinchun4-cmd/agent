@@ -26,4 +26,24 @@ class AgentPlannerTest {
 
         assertEquals("local_task", plan.toolId)
     }
+
+    @Test
+    fun `routes traditional chinese research intent to web research`() {
+        val plan = planner.plan(
+            AgentTask("3", "搜尋這個主題的資料"),
+            setOf("web_research", "local_task")
+        )
+
+        assertEquals("web_research", plan.toolId)
+    }
+
+    @Test
+    fun `routes traditional chinese file intent to file agent`() {
+        val plan = planner.plan(
+            AgentTask("4", "讀取這個檔案"),
+            setOf("file_agent", "local_task")
+        )
+
+        assertEquals("file_agent", plan.toolId)
+    }
 }
