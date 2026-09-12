@@ -4,25 +4,21 @@ package com.example.agent.nexus.agent
  * Deterministic planner. Tool selection stays explicit so each execution path
  * is inspectable and can later be replaced by model-assisted planning.
  */
-class AgentPlanner {
+class AgentPlanner(
+    private val intentClassifier: IntentClassifier = IntentClassifier()
+) {
     fun plan(task: AgentTask, availableToolIds: Set<String> = emptySet()): AgentPlan {
-        val input = task.input.lowercase()
-        val toolId = when {
-            (("開啟 app" in input || "打开 app" in input || "open app" in input || "launch app" in input) &&
-                "app_agent" in availableToolIds) -> "app_agent"
-            "github" in input && "github" in availableToolIds -> "github"
-            ("office" in input || "document" in input || "spreadsheet" in input ||
-                "簡報" in task.input || "試算表" in task.input) &&
-                "office" in availableToolIds -> "office"
-            ("memory" in input || "記憶" in task.input || "记忆" in task.input) && "memory" in availableToolIds -> "memory"
-            ("skill" in input || "skills" in input || "技能" in task.input) && "skills" in availableToolIds -> "skills"
-            "网页" in task.input || "web" in input || "搜索" in task.input ->
-                "web_research".takeIf(availableToolIds::contains)
-            "文件" in task.input || "file" in input ->
-                "file_agent".takeIf(availableToolIds::contains)
-            "local_task" in availableToolIds -> "local_task"
-            else -> null
-        }
+        val intent = intentClassifier.classify(task.input)
+        val toolId = when (intent) {
+            AgentIntent.App -> "app_agent".takeIf(availableToolIds::contains)
+            AgentIntent.GitHub -> "github".takeIf(availableToolIds::contains)
+            AgentIntent.Office -> "office".takeIf(availableToolIds::contains)
+            AgentIntent.Memory -> "memory".takeIf(availableToolIds::contains)
+            AgentIntent.Skills -> "skills".takeIf(availableToolIds::contains)
+            AgentIntent.WebResearch -> "web_research".takeIf(availableToolIds::contains)
+            AgentIntent.File -> "file_agent".takeIf(availableToolIds::contains)
+            AgentIntent.General -> null
+        } ?: "local_task".takeIf(availableToolIds::contains)
 
         val steps = if (toolId == null) {
             listOf("understand_request", "answer")
