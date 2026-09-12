@@ -1,8 +1,8 @@
 package com.example.agent.nexus.tool
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
+import org.junit.Test
 
 class ToolCallTest {
     @Test
@@ -16,17 +16,17 @@ class ToolCallTest {
 
     @Test
     fun rejects_blank_task_or_tool_ids() {
-        assertFailsWith<IllegalArgumentException> {
+        assertThrows(IllegalArgumentException::class.java) {
             ToolCall(taskId = "", toolId = "github")
         }
-        assertFailsWith<IllegalArgumentException> {
+        assertThrows(IllegalArgumentException::class.java) {
             ToolCall(taskId = "task-1", toolId = "")
         }
     }
 
     @Test
     fun rejects_negative_step_index() {
-        assertFailsWith<IllegalArgumentException> {
+        assertThrows(IllegalArgumentException::class.java) {
             ToolCall(taskId = "task-1", toolId = "github", stepIndex = -1)
         }
     }
