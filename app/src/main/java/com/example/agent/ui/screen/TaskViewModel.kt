@@ -2,6 +2,7 @@ package com.example.agent.ui.screen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.agent.nexus.agent.AgentConfirmationRequest
 import com.example.agent.nexus.agent.AgentExecution
 import com.example.agent.nexus.agent.AgentProgress
 import com.example.agent.nexus.agent.AgentResult
@@ -16,6 +17,10 @@ import java.util.UUID
 
 sealed interface TaskUiState {
     data object Idle : TaskUiState
+    data class PendingConfirmation(
+        val task: AgentTask,
+        val request: AgentConfirmationRequest
+    ) : TaskUiState
     data class Running(
         val task: AgentTask,
         val progress: AgentProgress? = null,
@@ -43,8 +48,31 @@ class TaskViewModel(
             input = prompt,
             metadata = metadata
         )
-        _uiState.value = TaskUiState.Running(task)
+        val confirmation = agent.previewConfirmation(task)
+        if (confirmation != null) {
+            _uiState.value = TaskUiState.PendingConfirmation(task, confirmation)
+            return
+        }
+        executeTask(task)
+    }
 
+    fun confirmTask() {
+        val state = _uiState.value as? TaskUiState.PendingConfirmation ?: return
+        val confirmedTask = state.task.copy(
+            metadata = state.task.metadata + (AgentTask.CONFIRMATION_GRANTED to "true")
+        )
+        executeTask(confirmedTask)
+    }
+
+    fun cancelConfirmation() {
+        if (_uiState.value is TaskUiState.PendingConfirmation) {
+            _uiState.value = TaskUiState.Idle
+        }
+    }
+
+    private fun executeTask(task: AgentTask) {
+        executionJob?.cancel()
+        _uiState.value = TaskUiState.Running(task)
         executionJob = viewModelScope.launch {
             val execution = agent.executeDetailed(task) { progress ->
                 _uiState.value = TaskUiState.Running(
