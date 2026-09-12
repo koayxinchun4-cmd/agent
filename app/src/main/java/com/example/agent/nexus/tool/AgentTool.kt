@@ -16,6 +16,10 @@ interface AgentTool {
     val riskLevel: RiskLevel
         get() = RiskLevel.SAFE
 
+    /** Android runtime permissions that must already be granted before execution. */
+    val requiredPermissions: Set<String>
+        get() = emptySet()
+
     suspend fun execute(task: AgentTask): ToolResult
 }
 

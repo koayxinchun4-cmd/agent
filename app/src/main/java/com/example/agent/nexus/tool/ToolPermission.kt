@@ -8,8 +8,24 @@ object ToolPermission {
         if (tool.riskLevel == RiskLevel.REQUIRES_CONFIRMATION &&
             task.metadata[AgentTask.CONFIRMATION_GRANTED] != "true"
         ) {
-            return ToolResult.Failure("工具 ${tool.id} 需要明确用户确认后才能执行")
+            return ToolResult.Failure("Tool ${tool.id} requires explicit user confirmation")
         }
+
+        val grantedPermissions = task.metadata[AgentTask.GRANTED_PERMISSIONS]
+            ?.split(',')
+            ?.map(String::trim)
+            ?.filter(String::isNotEmpty)
+            ?.toSet()
+            .orEmpty()
+        val missingPermissions = tool.requiredPermissions - grantedPermissions
+
+        if (missingPermissions.isNotEmpty()) {
+            return ToolResult.Failure(
+                "Tool ${tool.id} requires Android permission(s): ${missingPermissions.joinToString()}. " +
+                    "Grant the permission before retrying."
+            )
+        }
+
         return null
     }
 }
