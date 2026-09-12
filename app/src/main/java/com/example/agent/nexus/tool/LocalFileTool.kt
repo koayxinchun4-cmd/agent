@@ -20,22 +20,21 @@ class LocalFileTool(
     override suspend fun execute(task: AgentTask): ToolResult {
         val selectedUri = task.metadata[SELECTED_URI_KEY]
         if (selectedUri != null) {
-            if (contentResolver == null) return ToolResult.Failure("SAF 文件读取器尚未初始化")
+            if (contentResolver == null) return ToolResult.Failure("SAF reader is not initialized")
             return SafFileReader { uri ->
                 contentResolver.openInputStream(Uri.parse(uri))
             }.read(selectedUri)
         }
 
         val input = task.input.trim()
-        if (input.isEmpty()) return ToolResult.Failure("文件任务内容不能为空")
+        if (input.isEmpty()) return ToolResult.Failure("File task input must not be empty")
 
         return runCatching {
             when {
-                input.contains("读取") || input.contains("read", ignoreCase = true) ->
-                    readRequestedFile(input)
+                isReadRequest(input) -> readRequestedFile(input)
                 else -> listFiles()
             }
-        }.getOrElse { ToolResult.Failure("文件工具执行失败：${it.message ?: "未知错误"}", it) }
+        }.getOrElse { ToolResult.Failure("File tool execution failed: ${it.message ?: "unknown error"}", it) }
     }
 
     private fun listFiles(): ToolResult {
@@ -46,43 +45,51 @@ class LocalFileTool(
             .toList()
 
         val body = if (entries.isEmpty()) {
-            "Nexus 私有存储目前没有文件。"
+            "Nexus private storage currently has no files."
         } else {
             entries.joinToString("\n")
         }
 
-        return ToolResult.Success("Nexus 私有文件列表\n$body")
+        return ToolResult.Success("Nexus private file list\n$body")
     }
 
     private fun readRequestedFile(input: String): ToolResult {
-        val marker = input.indexOf(READ_MARKER)
-        if (marker < 0) {
-            return ToolResult.Failure("请提供要读取的相对文件路径")
-        }
-
-        val relativePath = input.substring(marker + READ_MARKER.length).trim()
-        if (relativePath.isEmpty()) {
-            return ToolResult.Failure("请提供要读取的相对文件路径")
-        }
+        val relativePath = extractReadPath(input)
+            ?: return ToolResult.Failure("Please provide the relative file path to read")
 
         val target = File(rootDirectory, relativePath).canonicalFile
         val root = rootDirectory.canonicalFile
         if (target != root && !target.path.startsWith(root.path + File.separator)) {
-            return ToolResult.Failure("禁止访问 Nexus 私有目录之外的文件")
+            return ToolResult.Failure("Access outside the Nexus private directory is not allowed")
         }
         if (!target.isFile) {
-            return ToolResult.Failure("找不到文件：$relativePath")
+            return ToolResult.Failure("File not found: $relativePath")
         }
         if (target.length() > MAX_READ_BYTES) {
-            return ToolResult.Failure("文件过大，暂不读取（上限 ${MAX_READ_BYTES / 1024} KB）")
+            return ToolResult.Failure("File is too large to read (limit ${MAX_READ_BYTES / 1024} KB)")
         }
 
-        return ToolResult.Success("文件读取完成：$relativePath\n\n${target.readText(Charsets.UTF_8)}")
+        return ToolResult.Success("File read complete: $relativePath\n\n${target.readText(Charsets.UTF_8)}")
+    }
+
+    private fun isReadRequest(input: String): Boolean =
+        input.contains(READ_MARKER) || input.contains(ENGLISH_READ_MARKER, ignoreCase = true)
+
+    private fun extractReadPath(input: String): String? {
+        val chineseMarker = input.indexOf(READ_MARKER)
+        if (chineseMarker >= 0) {
+            return input.substring(chineseMarker + READ_MARKER.length).trim().ifEmpty { null }
+        }
+
+        val englishMatch = ENGLISH_READ_REGEX.find(input) ?: return null
+        return englishMatch.groupValues[1].trim().ifEmpty { null }
     }
 
     companion object {
         const val SELECTED_URI_KEY = "selected_uri"
         const val READ_MARKER = "读取"
+        const val ENGLISH_READ_MARKER = "read"
+        private val ENGLISH_READ_REGEX = Regex("^\\s*read\\s+(.+)$", RegexOption.IGNORE_CASE)
         const val MAX_LIST_ENTRIES = 100
         const val MAX_READ_BYTES = 256 * 1024L
     }
