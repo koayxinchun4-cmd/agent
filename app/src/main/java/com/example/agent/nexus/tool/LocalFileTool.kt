@@ -56,6 +56,7 @@ class LocalFileTool(
     private fun readRequestedFile(input: String): ToolResult {
         val relativePath = extractReadPath(input)
             ?: return ToolResult.Failure("Please provide the relative file path to read")
+        FilePathValidator.validate(relativePath)?.let { return ToolResult.Failure(it) }
 
         val target = File(rootDirectory, relativePath).canonicalFile
         val root = rootDirectory.canonicalFile
