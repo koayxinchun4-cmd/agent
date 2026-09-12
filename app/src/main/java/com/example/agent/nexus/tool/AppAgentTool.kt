@@ -12,21 +12,22 @@ class AppAgentTool(
     override val id: String = "app_agent"
     override val name: String = "App Agent"
     override val description: String = "Open an installed Android app using an explicit package name."
+    override val riskLevel: RiskLevel = RiskLevel.REQUIRES_CONFIRMATION
 
     override suspend fun execute(task: AgentTask): ToolResult {
         val packageName = extractPackageName(task)
-            ?: return ToolResult.Failure("請提供要開啟的 App package name，例如：package:com.example.app")
+            ?: return ToolResult.Failure("Please provide an App package name, for example: package:com.example.app")
 
         return try {
             val intent = context.packageManager.getLaunchIntentForPackage(packageName)
-                ?: return ToolResult.Failure("找不到可開啟的 App：$packageName")
+                ?: return ToolResult.Failure("App cannot be opened: $packageName")
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-            ToolResult.Success("已開啟 App：$packageName")
+            ToolResult.Success("Opened App: $packageName")
         } catch (error: SecurityException) {
-            ToolResult.Failure("Android 拒絕開啟 App：$packageName", error)
+            ToolResult.Failure("Android rejected opening App: $packageName", error)
         } catch (error: Exception) {
-            ToolResult.Failure("無法開啟 App：$packageName", error)
+            ToolResult.Failure("Unable to open App: $packageName", error)
         }
     }
 

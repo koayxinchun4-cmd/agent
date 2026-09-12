@@ -24,17 +24,10 @@ import androidx.compose.ui.unit.dp
 import com.example.agent.nexus.agent.AgentExecution
 import com.example.agent.nexus.agent.AgentProgress
 
-private data class TimelineItem(
-    val title: String,
-    val detail: String,
-    val status: NexusTimelineStatus
-)
+private data class TimelineItem(val title: String, val detail: String, val status: NexusTimelineStatus)
 
 @Composable
-fun NexusAgentTimeline(
-    execution: AgentExecution?,
-    progress: AgentProgress?
-) {
+fun NexusAgentTimeline(execution: AgentExecution?, progress: AgentProgress?) {
     val steps = execution?.steps.orEmpty().ifEmpty { progress?.steps.orEmpty() }
     val liveStep = progress?.step?.step
     val has = { name: String -> steps.any { it.step == name || it.step.startsWith(name) } }
@@ -42,48 +35,34 @@ fun NexusAgentTimeline(
     val active = { name: String -> liveStep == name || liveStep?.startsWith(name) == true }
 
     val items = listOf(
-        TimelineItem("理解需求", "分析目标与约束", nexusTimelineStatus(has("understand_request"), active("understand_request"), false)),
-        TimelineItem("制定计划", "拆分任务与选择执行路径", nexusTimelineStatus(has("plan"), active("plan"), false)),
-        TimelineItem("执行工具", "调用可用 Tools / Models", nexusTimelineStatus(has("use_tool:"), active("use_tool:"), failed("use_tool:"))),
-        TimelineItem("验证结果", "检查执行结果是否满足目标", nexusTimelineStatus(has("verify"), active("verify"), failed("verify"))),
-        TimelineItem("完成", "整理最终结果并交给你", nexusTimelineStatus(has("answer"), active("answer"), failed("answer")))
+        TimelineItem("Understanding request", "Analyze goal and constraints", nexusTimelineStatus(has("understand_request"), active("understand_request"), false)),
+        TimelineItem("Planning", "Decompose task and choose execution path", nexusTimelineStatus(has("plan"), active("plan"), false)),
+        TimelineItem("Executing tool", "Call available tools / models", nexusTimelineStatus(has("use_tool:"), active("use_tool:"), failed("use_tool:"))),
+        TimelineItem("Verifying result", "Check whether the result satisfies the goal", nexusTimelineStatus(has("verify"), active("verify"), failed("verify"))),
+        TimelineItem("Completed", "Prepare the final result", nexusTimelineStatus(has("answer"), active("answer"), failed("answer")))
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("正在执行任务", style = MaterialTheme.typography.titleLarge)
-        items.forEachIndexed { index, item ->
-            NexusTimelineItem(item, isLast = index == items.lastIndex)
-        }
+        Text("Agent workflow", style = MaterialTheme.typography.titleLarge)
+        items.forEachIndexed { index, item -> NexusTimelineItem(item, isLast = index == items.lastIndex) }
     }
 }
 
 @Composable
-fun NexusConfirmationCard(
-    toolName: String,
-    action: String,
-    onCancel: () -> Unit,
-    onConfirm: () -> Unit
-) {
+fun NexusConfirmationCard(toolName: String, action: String, onCancel: () -> Unit, onConfirm: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("需要你的确认", style = MaterialTheme.typography.titleLarge)
+            Text("Needs your confirmation", style = MaterialTheme.typography.titleLarge)
             Text(toolName, style = MaterialTheme.typography.titleMedium)
             Text(action, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                "这个操作需要明确确认后才能执行。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("取消") }
-                Button(onClick = onConfirm, modifier = Modifier.weight(1f)) { Text("确认执行") }
+            Text("This action requires explicit confirmation before execution.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
+                Button(onClick = onConfirm, modifier = Modifier.weight(1f)) { Text("Confirm execution") }
             }
         }
     }
@@ -97,32 +76,17 @@ private fun NexusTimelineItem(item: TimelineItem, isLast: Boolean) {
         NexusTimelineStatus.PENDING -> "○" to MaterialTheme.colorScheme.surfaceVariant
         NexusTimelineStatus.FAILED -> "!" to MaterialTheme.colorScheme.errorContainer
     }
-
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier.size(38.dp).background(containerColor, CircleShape),
-                contentAlignment = Alignment.Center
-            ) { Text(symbol, style = MaterialTheme.typography.titleMedium) }
-            if (!isLast) {
-                Box(
-                    modifier = Modifier.padding(vertical = 3.dp).size(width = 2.dp, height = 28.dp)
-                        .background(MaterialTheme.colorScheme.outlineVariant)
-                )
-            }
+            Box(modifier = Modifier.size(38.dp).background(containerColor, CircleShape), contentAlignment = Alignment.Center) { Text(symbol, style = MaterialTheme.typography.titleMedium) }
+            if (!isLast) Box(modifier = Modifier.padding(vertical = 3.dp).size(width = 2.dp, height = 28.dp).background(MaterialTheme.colorScheme.outlineVariant))
         }
         Spacer(Modifier.size(12.dp))
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = when (item.status) {
-                    NexusTimelineStatus.ACTIVE -> MaterialTheme.colorScheme.primaryContainer
-                    NexusTimelineStatus.FAILED -> MaterialTheme.colorScheme.errorContainer
-                    else -> MaterialTheme.colorScheme.surface
-                }
-            )
-        ) {
+        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = when (item.status) {
+            NexusTimelineStatus.ACTIVE -> MaterialTheme.colorScheme.primaryContainer
+            NexusTimelineStatus.FAILED -> MaterialTheme.colorScheme.errorContainer
+            else -> MaterialTheme.colorScheme.surface
+        })) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 13.dp)) {
                 Text(item.title, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.size(3.dp))

@@ -49,25 +49,20 @@ fun TaskScreen(
     var appPackage by remember { mutableStateOf("") }
     val uiState by viewModel.uiState.collectAsState()
     val running = uiState is TaskUiState.Running
+    val pendingConfirmation = uiState is TaskUiState.PendingConfirmation
     val finished = uiState is TaskUiState.Completed || uiState is TaskUiState.Failed
-    val started = running || finished
+    val started = running || pendingConfirmation || finished
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
             prompt = "读取并分析我选取的文件"
-            viewModel.startTask(
-                prompt,
-                metadata = mapOf(LocalFileTool.SELECTED_URI_KEY to uri.toString())
-            )
+            viewModel.startTask(prompt, metadata = mapOf(LocalFileTool.SELECTED_URI_KEY to uri.toString()))
         }
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(
@@ -77,62 +72,29 @@ fun TaskScreen(
         ) {
             Column {
                 Text("Nexus Task", style = MaterialTheme.typography.headlineSmall)
-                Text(
-                    if (started) "Agent workflow" else "Give Nexus a goal",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text(if (started) "Agent workflow" else "Give Nexus a goal", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            OutlinedButton(onClick = onBack) { Text("返回") }
+            OutlinedButton(onClick = onBack) { Text("Back") }
         }
 
         if (!started) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-            ) {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                 Column(Modifier.padding(20.dp)) {
                     Text("What should Nexus do?", style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = prompt,
-                        onValueChange = { prompt = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 4,
-                        placeholder = { Text("例如：帮我分析这个 Android CI 失败的原因") }
-                    )
+                    OutlinedTextField(value = prompt, onValueChange = { prompt = it }, modifier = Modifier.fillMaxWidth(), minLines = 4, placeholder = { Text("例如：帮我分析这个 Android CI 失败的原因") })
                     Spacer(Modifier.height(12.dp))
-                    Button(
-                        onClick = { viewModel.startTask(prompt) },
-                        enabled = prompt.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(vertical = 14.dp)
-                    ) { Text("Start task") }
+                    Button(onClick = { viewModel.startTask(prompt) }, enabled = prompt.isNotBlank(), modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp)) { Text("Start task") }
                     Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { filePicker.launch(arrayOf("text/*", "application/json", "application/xml")) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("选择文件并交给 Nexus") }
+                    OutlinedButton(onClick = { filePicker.launch(arrayOf("text/*", "application/json", "application/xml")) }, modifier = Modifier.fillMaxWidth()) { Text("选择文件并交给 Nexus") }
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = appPackage,
-                        onValueChange = { appPackage = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        label = { Text("App package name") },
-                        placeholder = { Text("例如：com.android.chrome") },
-                        supportingText = { Text("只会开启你明确指定的已安装 App") }
-                    )
+                    OutlinedTextField(value = appPackage, onValueChange = { appPackage = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("App package name") }, placeholder = { Text("例如：com.android.chrome") }, supportingText = { Text("只会开启你明确指定的已安装 App") })
                     Spacer(Modifier.height(4.dp))
                     OutlinedButton(
                         onClick = {
                             val packageName = appPackage.trim()
                             prompt = "開啟 package:$packageName"
-                            viewModel.startTask(
-                                prompt,
-                                metadata = mapOf(AppAgentTool.PACKAGE_KEY to packageName)
-                            )
+                            viewModel.startTask(prompt, metadata = mapOf(AppAgentTool.PACKAGE_KEY to packageName))
                         },
                         enabled = appPackage.trim().isNotBlank(),
                         modifier = Modifier.fillMaxWidth()
@@ -144,6 +106,7 @@ fun TaskScreen(
                 is TaskUiState.Running -> state.execution
                 is TaskUiState.Completed -> state.execution
                 is TaskUiState.Failed -> state.execution
+                is TaskUiState.PendingConfirmation -> null
                 TaskUiState.Idle -> null
             }
             val progress = (uiState as? TaskUiState.Running)?.progress
@@ -152,43 +115,49 @@ fun TaskScreen(
                 is TaskUiState.Running -> state.task.input
                 is TaskUiState.Completed -> state.task.input
                 is TaskUiState.Failed -> state.task.input
+                is TaskUiState.PendingConfirmation -> state.task.input
                 TaskUiState.Idle -> prompt
             }
 
             TaskSummary(taskText, uiState)
-            NexusAgentTimeline(execution = execution, progress = progress)
-            CurrentAction(execution, progress, uiState)
-
-            if (running && liveSteps.isNotEmpty()) {
-                Text("Live execution", style = MaterialTheme.typography.titleMedium)
-                liveSteps.takeLast(3).forEach { step ->
-                    LiveStepRow(step)
+            if (uiState is TaskUiState.PendingConfirmation) {
+                val state = uiState as TaskUiState.PendingConfirmation
+                NexusConfirmationCard(toolName = state.request.tool.name, action = state.request.tool.description, onCancel = viewModel::cancelConfirmation, onConfirm = viewModel::confirmTask)
+            } else {
+                NexusAgentTimeline(execution = execution, progress = progress)
+                CurrentAction(execution, progress, uiState)
+                if (running && liveSteps.isNotEmpty()) {
+                    Text("Live execution", style = MaterialTheme.typography.titleMedium)
+                    liveSteps.takeLast(3).forEach { step -> LiveStepRow(step) }
                 }
-            }
-
-            if (finished) {
-                val resultText = when (val state = uiState) {
-                    is TaskUiState.Completed -> (state.execution.result as AgentResult.Success).text
-                    is TaskUiState.Failed -> (state.execution.result as AgentResult.Failure).message
-                    else -> ""
-                }
-                Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
-                    Column(Modifier.padding(18.dp)) {
-                        Text("Result", style = MaterialTheme.typography.labelLarge)
-                        Spacer(Modifier.height(6.dp))
-                        Text(resultText, style = MaterialTheme.typography.bodyLarge)
+                if (finished) {
+                    val resultText = when (val state = uiState) {
+                        is TaskUiState.Completed -> (state.execution.result as AgentResult.Success).text
+                        is TaskUiState.Failed -> (state.execution.result as AgentResult.Failure).message
+                        else -> ""
+                    }
+                    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
+                        Column(Modifier.padding(18.dp)) {
+                            Text("Result", style = MaterialTheme.typography.labelLarge)
+                            Spacer(Modifier.height(6.dp))
+                            Text(resultText, style = MaterialTheme.typography.bodyLarge)
+                        }
                     }
                 }
             }
 
             OutlinedButton(
                 onClick = {
-                    if (running) viewModel.stopTask() else viewModel.reset()
+                    when {
+                        running -> viewModel.stopTask()
+                        pendingConfirmation -> viewModel.cancelConfirmation()
+                        else -> viewModel.reset()
+                    }
                     prompt = ""
                     appPackage = ""
                 },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text(if (running) "停止任务" else "新建任务") }
+            ) { Text(if (running) "Stop task" else if (pendingConfirmation) "Cancel task" else "New task") }
         }
     }
 }
@@ -196,10 +165,11 @@ fun TaskScreen(
 @Composable
 private fun TaskSummary(text: String, state: TaskUiState) {
     val status = when (state) {
-        is TaskUiState.Running -> "运行中 · Agent 正在执行"
-        is TaskUiState.Completed -> "已完成"
-        is TaskUiState.Failed -> "执行失败"
-        TaskUiState.Idle -> "准备中"
+        is TaskUiState.Running -> "Running · Agent is executing"
+        is TaskUiState.PendingConfirmation -> "Waiting for your confirmation"
+        is TaskUiState.Completed -> "Completed"
+        is TaskUiState.Failed -> "Execution failed"
+        TaskUiState.Idle -> "Ready"
     }
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
         Column(Modifier.padding(18.dp)) {
@@ -228,11 +198,7 @@ private fun CurrentAction(execution: AgentExecution?, progress: AgentProgress?, 
         execution == null -> "Starting Agent…"
         else -> "Planning next action…"
     }
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(Modifier.padding(18.dp)) {
             Text("Current action", style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(6.dp))
@@ -251,10 +217,7 @@ private fun CurrentAction(execution: AgentExecution?, progress: AgentProgress?, 
 
 @Composable
 private fun LiveStepRow(step: AgentStepResult) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(if (step.success) "✓" else "!", style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.size(10.dp))
         Column(Modifier.weight(1f)) {
