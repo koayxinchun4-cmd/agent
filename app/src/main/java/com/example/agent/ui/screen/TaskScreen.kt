@@ -2,9 +2,7 @@ package com.example.agent.ui.screen
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -41,14 +38,6 @@ import com.example.agent.nexus.agent.AgentResult
 import com.example.agent.nexus.agent.AgentStepResult
 import com.example.agent.nexus.tool.AppAgentTool
 import com.example.agent.nexus.tool.LocalFileTool
-
-private enum class TaskStepStatus { DONE, ACTIVE, PENDING, FAILED }
-
-private data class TaskStep(
-    val title: String,
-    val detail: String,
-    val status: TaskStepStatus
-)
 
 @Composable
 fun TaskScreen(
@@ -167,12 +156,7 @@ fun TaskScreen(
             }
 
             TaskSummary(taskText, uiState)
-            Text("Agent workflow", style = MaterialTheme.typography.titleLarge)
-            val workflowSteps = taskSteps(execution, progress)
-            workflowSteps.forEachIndexed { index, step ->
-                TaskStepCard(step, isLast = index == workflowSteps.lastIndex)
-            }
-
+            NexusAgentTimeline(execution = execution, progress = progress)
             CurrentAction(execution, progress, uiState)
 
             if (running && liveSteps.isNotEmpty()) {
@@ -230,44 +214,6 @@ private fun TaskSummary(text: String, state: TaskUiState) {
     }
 }
 
-private fun taskSteps(execution: AgentExecution?, progress: AgentProgress?): List<TaskStep> {
-    val steps = execution?.steps.orEmpty().ifEmpty { progress?.steps.orEmpty() }
-    val liveStep = progress?.step?.step
-    val has = { name: String -> steps.any { it.step == name || it.step.startsWith(name) } }
-    val failed = { name: String ->
-        steps.lastOrNull { it.step == name || it.step.startsWith(name) }?.success == false
-    }
-    val isLive = { name: String -> liveStep == name || liveStep?.startsWith(name) == true }
-
-    return listOf(
-        TaskStep(
-            "理解需求",
-            "分析目标与约束",
-            when { has("understand_request") -> TaskStepStatus.DONE; isLive("understand_request") -> TaskStepStatus.ACTIVE; else -> TaskStepStatus.PENDING }
-        ),
-        TaskStep(
-            "制定计划",
-            "拆分任务与选择执行路径",
-            when { has("plan") -> TaskStepStatus.DONE; isLive("plan") -> TaskStepStatus.ACTIVE; else -> TaskStepStatus.PENDING }
-        ),
-        TaskStep(
-            "执行工具",
-            "调用可用 Tools / Models",
-            when { failed("use_tool:") -> TaskStepStatus.FAILED; has("use_tool:") -> TaskStepStatus.DONE; isLive("use_tool:") -> TaskStepStatus.ACTIVE; else -> TaskStepStatus.PENDING }
-        ),
-        TaskStep(
-            "验证结果",
-            "检查执行结果是否满足目标",
-            when { failed("verify") -> TaskStepStatus.FAILED; has("verify") -> TaskStepStatus.DONE; isLive("verify") -> TaskStepStatus.ACTIVE; else -> TaskStepStatus.PENDING }
-        ),
-        TaskStep(
-            "完成",
-            "整理最终结果并交给你",
-            when { failed("answer") -> TaskStepStatus.FAILED; has("answer") -> TaskStepStatus.DONE; isLive("answer") -> TaskStepStatus.ACTIVE; else -> TaskStepStatus.PENDING }
-        )
-    )
-}
-
 @Composable
 private fun CurrentAction(execution: AgentExecution?, progress: AgentProgress?, state: TaskUiState) {
     val liveStep = progress?.step?.step
@@ -314,34 +260,6 @@ private fun LiveStepRow(step: AgentStepResult) {
         Column(Modifier.weight(1f)) {
             Text(step.step, style = MaterialTheme.typography.bodyMedium)
             Text(step.output, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun TaskStepCard(step: TaskStep, isLast: Boolean) {
-    val (symbol, containerColor) = when (step.status) {
-        TaskStepStatus.DONE -> "✓" to MaterialTheme.colorScheme.secondaryContainer
-        TaskStepStatus.ACTIVE -> "●" to MaterialTheme.colorScheme.primaryContainer
-        TaskStepStatus.PENDING -> "○" to MaterialTheme.colorScheme.surfaceVariant
-        TaskStepStatus.FAILED -> "!" to MaterialTheme.colorScheme.errorContainer
-    }
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(modifier = Modifier.size(36.dp).background(containerColor, CircleShape), contentAlignment = Alignment.Center) {
-                Text(symbol, style = MaterialTheme.typography.titleMedium)
-            }
-            if (!isLast) {
-                Box(modifier = Modifier.padding(vertical = 3.dp).size(width = 2.dp, height = 28.dp).background(MaterialTheme.colorScheme.outlineVariant))
-            }
-        }
-        Spacer(Modifier.size(12.dp))
-        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 13.dp)) {
-                Text(step.title, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(3.dp))
-                Text(step.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
         }
     }
 }
