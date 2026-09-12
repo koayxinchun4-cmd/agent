@@ -1,5 +1,9 @@
 package com.example.agent.nexus.agent
 
+import com.example.agent.nexus.memory.AgentMemoryContext
+import com.example.agent.nexus.memory.MemoryContextProvider
+import com.example.agent.nexus.memory.MemoryItem
+import com.example.agent.nexus.memory.MemoryScope
 import com.example.agent.nexus.tool.AgentTool
 import com.example.agent.nexus.tool.RiskLevel
 import com.example.agent.nexus.tool.ToolRegistry
@@ -143,6 +147,44 @@ class NexusAgentReliabilityTest {
 
         assertTrue(result is ToolResult.Success)
         assertEquals(1, calls)
+    }
+
+    @Test
+    fun executionLoadsMemoryContextAndKeepsItAvailableWithoutEmbeddingItInPrompt() = runBlocking {
+        var loadedTaskId: String? = null
+        var loadedProjectId: String? = null
+        val provider = object : MemoryContextProvider {
+            override suspend fun load(taskId: String?, projectId: String?): AgentMemoryContext {
+                loadedTaskId = taskId
+                loadedProjectId = projectId
+                return AgentMemoryContext(
+                    listOf(MemoryItem(MemoryScope.PROJECT, "language", "Kotlin"))
+                )
+            }
+        }
+        val tool = object : AgentTool {
+            override val id = "local_task"
+            override val name = "Test Task"
+            override val description = "Context test tool"
+
+            override suspend fun execute(task: AgentTask): ToolResult = ToolResult.Success("completed")
+        }
+
+        val task = AgentTask(
+            id = "context-1",
+            input = "run a task",
+            metadata = mapOf(AgentTask.PROJECT_ID to "project-1")
+        )
+        val execution = NexusAgent(
+            toolRegistry = ToolRegistry(listOf(tool)),
+            memoryContextProvider = provider
+        ).executeDetailed(task)
+
+        assertEquals("context-1", loadedTaskId)
+        assertEquals("project-1", loadedProjectId)
+        assertEquals("project-1", execution.context?.projectId)
+        assertEquals("Kotlin", execution.context?.memory?.forScope(MemoryScope.PROJECT)?.single()?.value)
+        assertTrue(execution.steps.any { it.step == "memory_context" && it.output.contains("1 memory item") })
     }
 
     @Test
