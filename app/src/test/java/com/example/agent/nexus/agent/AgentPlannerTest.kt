@@ -1,6 +1,7 @@
 package com.example.agent.nexus.agent
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AgentPlannerTest {
@@ -45,5 +46,21 @@ class AgentPlannerTest {
         )
 
         assertEquals("file_agent", plan.toolId)
+    }
+
+    @Test
+    fun `exposes ordered subtasks for a multi-step goal`() {
+        val plan = planner.plan(
+            AgentTask("5", "搜尋 repo then 檢查 CI then 整理結果"),
+            setOf("web_research", "local_task")
+        )
+
+        assertEquals(
+            listOf("搜尋 repo", "檢查 CI", "整理結果"),
+            plan.subtasks
+        )
+        assertTrue(plan.steps[1].startsWith("subtask:1:"))
+        assertTrue(plan.steps[2].startsWith("subtask:2:"))
+        assertTrue(plan.steps[3].startsWith("subtask:3:"))
     }
 }
