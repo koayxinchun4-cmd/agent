@@ -24,8 +24,10 @@ class AgentPlanner(
 
         val steps = buildList {
             add("understand_request")
-            subtasks.forEachIndexed { index, subtask ->
-                add("subtask:${index + 1}:$subtask")
+            if (subtasks.size > 1) {
+                subtasks.forEachIndexed { index, subtask ->
+                    add("subtask:${index + 1}:$subtask")
+                }
             }
             if (toolId != null) add("use_tool:$toolId")
             add("answer")
