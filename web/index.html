@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Nexus AI Web Trial — a mobile-first AI Agent preview.">
-  <title>Nexus AI — Web Trial</title>
+  <meta name="description" content="CC Web Trial — a mobile-first AI Agent platform preview.">
+  <title>CC — Web Trial</title>
   <style>
     :root{color-scheme:dark;--bg:#080b12;--panel:#111722;--line:#253044;--text:#eef3ff;--muted:#9aa7bd;--accent:#8ab4ff;--ok:#8ee0b2}
     *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at 50% -10%,#17243b 0,#080b12 45%);color:var(--text);min-height:100vh}
@@ -13,14 +13,14 @@
 </head>
 <body>
 <main>
-  <div class="brand"><div class="logo">✦</div><div><div class="eyebrow">Nexus AI</div><div>Web Trial</div></div></div>
+  <div class="brand"><div class="logo">✦</div><div><div class="eyebrow">CC</div><div>Web Trial</div></div></div>
   <section class="hero">
-    <h1>Tell Nexus what you want.</h1>
-    <p>A web-first preview of the Nexus Agent experience. Describe a goal and watch the task move through understanding, planning, execution and verification.</p>
+    <h1>Tell CC what you want.</h1>
+    <p>A mobile-first preview of the CC Agent experience. Describe a goal and watch the task move through understanding, planning, execution and verification.</p>
   </section>
-  <section class="trial" aria-label="Nexus trial">
+  <section class="trial" aria-label="CC trial">
     <textarea id="task" placeholder="例如：幫我整理今天最重要的三件事"></textarea>
-    <div class="actions"><button id="run">試用 Nexus</button></div>
+    <div class="actions"><button id="run">試用 CC</button></div>
     <div id="timeline" class="timeline" hidden></div>
     <div id="note" class="note" hidden></div>
   </section>
@@ -29,7 +29,7 @@
 <script>
 const run=document.querySelector('#run'), task=document.querySelector('#task'), timeline=document.querySelector('#timeline'), note=document.querySelector('#note');
 const stages=[['Understanding','理解你的目標'],['Planning','拆解任務並選擇策略'],['Execution','執行可用的 Web 試用流程'],['Verification','檢查結果並整理回覆']];
-run.onclick=()=>{const value=task.value.trim();if(!value){task.focus();return}run.disabled=true;timeline.hidden=false;note.hidden=true;timeline.innerHTML='';stages.forEach(([title,sub],i)=>{const el=document.createElement('div');el.className='step';el.innerHTML=`<span class="dot"></span><div><strong>${title}</strong><small>${sub}</small></div>`;timeline.appendChild(el);setTimeout(()=>el.classList.add('done'),650+i*650)});setTimeout(()=>{note.hidden=false;note.textContent='目前這個 Web Trial 是安全的產品體驗原型；真實模型與工具執行層會在後續接入 Nexus Agent Runtime。你的任務：「'+value+'」已完成試用流程。';run.disabled=false},3500)};
+run.onclick=()=>{const value=task.value.trim();if(!value){task.focus();return}run.disabled=true;timeline.hidden=false;note.hidden=true;timeline.innerHTML='';stages.forEach(([title,sub],i)=>{const el=document.createElement('div');el.className='step';el.innerHTML=`<span class="dot"></span><div><strong>${title}</strong><small>${sub}</small></div>`;timeline.appendChild(el);setTimeout(()=>el.classList.add('done'),650+i*650)});setTimeout(()=>{note.hidden=false;note.textContent='目前這個 Web Trial 是安全的產品體驗原型；真實模型與工具執行層會在後續接入 CC Agent Runtime。你的任務：「'+value+'」已完成試用流程。';run.disabled=false},3500)};
 </script>
 </body>
 </html>
