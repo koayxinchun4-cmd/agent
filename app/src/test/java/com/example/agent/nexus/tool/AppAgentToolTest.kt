@@ -2,7 +2,9 @@ package com.example.agent.nexus.tool
 
 import com.example.agent.nexus.agent.AgentTask
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppAgentToolTest {
@@ -40,5 +42,19 @@ class AppAgentToolTest {
         val task = AgentTask("app-4", "open my browser")
 
         assertNull(AppAgentTool.extractPackageName(task))
+    }
+
+    @Test
+    fun acceptsValidPackageNames() {
+        assertTrue(AppAgentTool.isValidPackageName("com.example.app"))
+        assertTrue(AppAgentTool.isValidPackageName("org.example_2.agent"))
+    }
+
+    @Test
+    fun rejectsUnsafePackageNameShapes() {
+        assertFalse(AppAgentTool.isValidPackageName("com.example/app"))
+        assertFalse(AppAgentTool.isValidPackageName("com.example:app"))
+        assertFalse(AppAgentTool.isValidPackageName("1com.example.app"))
+        assertFalse(AppAgentTool.isValidPackageName("com..example.app"))
     }
 }
