@@ -1,23 +1,50 @@
-# Nexus AI — Current Product Roadmap
+# CC — Current Product Roadmap
 
-> This is the active product roadmap for Nexus AI.
+> This is the active product roadmap for CC.
 >
 > The older Phase 1–7 GitHub Actions roadmap remains useful as a regression / historical verification baseline, but it is **not** the authoritative current product roadmap.
 
 ## Product North Star
 
-Nexus AI is a native Android, mobile-first AI Agent that can understand user goals, select models and tools, execute real tasks safely, verify results, and learn through persistent Skills and Memory.
+CC is a mobile-first AI Agent platform with native Android and Mobile Web clients. Both clients share the same Agent Core, task/session state, Skills, Memory, model routing, tool contracts, verification, and recovery model.
+
+The platform can understand user goals, select models and tools, execute real tasks safely, verify results, and learn through persistent Skills and Memory.
 
 Core constraints:
 
-- Native Android
-- Kotlin + Jetpack Compose
-- Phone-first
+- Mobile-first
+- Native Android client: Kotlin + Jetpack Compose
+- Mobile Web client: responsive Web / PWA direction
+- Shared Agent state and contracts across clients
 - No Root requirement
 - Android public APIs and explicit user permissions
 - Gemini plus multi-model routing
 - Traditional Chinese (`zh-TW`), English, and Bahasa Melayu
 - Security and privacy by default
+
+## Platform model
+
+```text
+                         CC Platform
+                              │
+                 Shared Agent Contract
+                              │
+              ┌───────────────┴───────────────┐
+              │                               │
+        CC Android                       CC Mobile Web
+              │                               │
+              └───────────────┬───────────────┘
+                              │
+                       CC Agent Runtime
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+       Skills               Memory          Model Router
+                              │
+                        Tool Runtime
+```
+
+The target is **100% shared Agent state and core behavior**, while platform-specific capabilities remain explicit. Android may expose device-native capabilities such as app intents and permission-gated storage; Web focuses on portable capabilities and shared Agent workflows.
 
 ## Current priorities
 
@@ -32,13 +59,18 @@ Core constraints:
 - Failure-aware retry / recovery
 - User confirmation for risky or irreversible actions
 
-### 2. Mobile Agent
+### 2. Android + Mobile Web Clients
 
-- File Agent using Android-safe storage access
+- Shared Agent session/task contract
+- Cross-client task continuation
+- Synchronized execution timeline
+- Shared authentication/session model
+- Mobile Web real backend entry point
+- Responsive Web / PWA experience
+- Android-safe File Agent using Android storage access
 - App Agent using explicit package / Android Intent flows
 - Permission-aware execution
 - Safe path and input validation
-- Clear execution timeline
 
 ### 3. Multi-Model Intelligence
 
@@ -58,6 +90,7 @@ Core constraints:
 - Project Memory
 - Task Memory
 - Safe persistence with local-first defaults
+- Cross-client synchronization
 
 ### 5. Real-World Work Agents
 
@@ -67,7 +100,7 @@ Core constraints:
 - Coding Agent integration
 - CI failure diagnosis and bounded repair loops
 
-### 6. Nexus Agent Studio
+### 6. CC Agent Studio
 
 - Agent configuration
 - Workflow design
