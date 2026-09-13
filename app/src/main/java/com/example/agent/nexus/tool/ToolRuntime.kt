@@ -1,6 +1,7 @@
 package com.example.agent.nexus.tool
 
 import com.example.agent.nexus.agent.AgentTask
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
@@ -66,17 +67,17 @@ class DefaultToolRuntime(
         }
 
         currentCoroutineContext().ensureActive()
-        return runCatching { tool.execute(task) }
-            .fold(
-                onSuccess = { ToolRuntimeResult.Success(it) },
-                onFailure = { error ->
-                    ToolRuntimeResult.Success(
-                        ToolResult.Failure(
-                            "Tool execution failed: ${error.message ?: "unknown error"}",
-                            error
-                        )
-                    )
-                }
+        return try {
+            ToolRuntimeResult.Success(tool.execute(task))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            ToolRuntimeResult.Success(
+                ToolResult.Failure(
+                    "Tool execution failed: ${error.message ?: "unknown error"}",
+                    error
+                )
             )
+        }
     }
 }
