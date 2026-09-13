@@ -57,13 +57,27 @@ class AppAgentTool(
                 ?: PACKAGE_PATTERN.find(task.input)?.groupValues?.get(1)
         }
 
-        /** Builds the only Intent shape App Agent is allowed to launch. */
+        /** Pure Kotlin contract for the only Intent shape App Agent is allowed to launch. */
+        data class LaunchIntentSpec(
+            val packageName: String,
+            val action: String = Intent.ACTION_MAIN,
+            val category: String = Intent.CATEGORY_LAUNCHER,
+            val flags: Int = Intent.FLAG_ACTIVITY_NEW_TASK
+        )
+
+        fun buildLaunchIntentSpec(packageName: String): LaunchIntentSpec? {
+            val normalizedPackageName = packageName.trim()
+            if (!isValidPackageName(normalizedPackageName)) return null
+            return LaunchIntentSpec(packageName = normalizedPackageName)
+        }
+
+        /** Converts the validated, testable contract into the Android Intent used at runtime. */
         fun buildLaunchIntent(packageName: String): Intent? {
-            if (!isValidPackageName(packageName)) return null
-            return Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                setPackage(packageName.trim())
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val spec = buildLaunchIntentSpec(packageName) ?: return null
+            return Intent(spec.action).apply {
+                addCategory(spec.category)
+                setPackage(spec.packageName)
+                addFlags(spec.flags)
             }
         }
     }
