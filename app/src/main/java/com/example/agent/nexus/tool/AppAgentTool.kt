@@ -18,10 +18,11 @@ class AppAgentTool(
         val packageName = extractPackageName(task)
             ?: return ToolResult.Failure("Please provide a valid App package name, for example: package:com.example.app")
 
+        val intent = buildLaunchIntent(packageName)
         return try {
-            val intent = context.packageManager.getLaunchIntentForPackage(packageName)
-                ?: return ToolResult.Failure("App cannot be opened: $packageName")
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) == null) {
+                return ToolResult.Failure("App cannot be opened: $packageName")
+            }
             context.startActivity(intent)
             ToolResult.Success("Opened App: $packageName")
         } catch (error: SecurityException) {
@@ -53,6 +54,16 @@ class AppAgentTool(
             return task.metadata[PACKAGE_KEY]?.trim()
                 ?.takeIf(::isValidPackageName)
                 ?: PACKAGE_PATTERN.find(task.input)?.groupValues?.get(1)
+        }
+
+        /** Builds the only Intent shape App Agent is allowed to launch. */
+        fun buildLaunchIntent(packageName: String): Intent? {
+            if (!isValidPackageName(packageName)) return null
+            return Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setPackage(packageName.trim())
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
         }
     }
 }
