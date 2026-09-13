@@ -1,0 +1,11 @@
+{
+  "name": "CC AI Agent",
+  "short_name": "CC",
+  "description": "CC mobile-first AI Agent platform.",
+  "lang": "zh-Hant",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "scope": "./",
+  "icons": []
+}
