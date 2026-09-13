@@ -1,8 +1,25 @@
 # Nexus AI — Architecture v2
 
-> Architecture proposal for the next generation of Nexus AI.
+> Architecture proposal and foundation implementation for the next generation of Nexus AI.
 >
 > This document turns the current product roadmap into an implementation-oriented Agent architecture while preserving Nexus's defining constraint: **the phone is the Agent's primary execution environment**.
+
+## Status
+
+Architecture v2 is now backed by a first implementation slice on this branch. The branch adds the core boundaries without requiring a product-wide rewrite:
+
+- explicit `AgentSession` / `AgentTurn` lifecycle primitives;
+- explicit runtime states and structured execution events;
+- bounded `AgentObservation` context;
+- policy-aware `ToolRuntime` with Android permission and confirmation checks;
+- session-scoped tool approvals;
+- cancellation-safe tool execution;
+- Android-safe app-private `MobileWorkspace` path boundary;
+- multi-agent specialist delegation and conservative re-planning contracts;
+- resumable execution checkpoint interface with an in-memory implementation;
+- existing `NexusAgent` wired through the common Tool Runtime.
+
+This is intentionally additive so the existing Agent contracts remain usable while the runtime boundary becomes stronger.
 
 ## 1. North Star
 
@@ -75,19 +92,20 @@ Owns user interaction and presentation, not execution policy.
 
 Owns task lifecycle and orchestration.
 
-Recommended core concepts:
+Implemented primitives now include:
 
 - `AgentSession`
 - `AgentTurn`
 - `AgentTask`
 - `AgentPlan`
-- `AgentStep`
 - `AgentExecution`
 - `AgentObservation`
 - `AgentResult`
+- `AgentRuntimeState`
+- `AgentEvent`
+- `AgentCheckpointStore`
 - `AgentVerifier`
 - `AgentRecovery`
-- `AgentCancellation`
 
 Lifecycle:
 
@@ -105,8 +123,8 @@ EXECUTING / VERIFYING
   -> EXECUTING
 
 Any state
-  -> WAITING_FOR_USER
   -> WAITING_FOR_PERMISSION
+  -> WAITING_FOR_CONFIRMATION
   -> FAILED / CANCELLED
 ```
 
@@ -127,59 +145,36 @@ Example roles:
 - Coding Agent
 - Verifier Agent
 
-A coordinator decides whether a task should remain single-agent or be delegated to specialists.
-
-Delegation must carry:
-
-- objective
-- constraints
-- required tools
-- permission scope
-- relevant context
-- expected output
-- verification criteria
+`SpecialistAgent` and `MultiAgentCoordinator` now provide the delegation boundary. Delegation must carry objective, constraints, required tools, permission scope, relevant context, expected output, and verification criteria at the higher orchestration layer.
 
 The coordinator owns the final result. Specialist agents must not silently expand permissions or task scope.
 
 ### Layer D — Tool Runtime
 
-Tools should be executed through a common runtime instead of each Agent implementing its own permission and failure logic.
+Tools are executed through a common runtime instead of each Agent implementing its own permission and failure logic.
 
-Recommended abstractions:
+The branch now provides:
 
 ```kotlin
-interface AgentTool {
-    val id: String
-    val risk: ToolRisk
-    suspend fun execute(input: ToolInput, context: ToolContext): ToolObservation
-}
-
 interface ToolRuntime {
     suspend fun execute(
-        call: ToolCall,
-        context: ToolContext,
-    ): ToolObservation
-}
-
-interface PermissionPolicy {
-    suspend fun evaluate(call: ToolCall): PermissionDecision
-}
-
-interface ConfirmationPolicy {
-    suspend fun confirm(request: ConfirmationRequest): ConfirmationDecision
+        sessionId: String,
+        task: AgentTask,
+        tool: AgentTool,
+        confirmationGranted: Boolean = false,
+        grantedPermissions: Set<String> = emptySet()
+    ): ToolRuntimeResult
 }
 ```
 
-The runtime should centrally handle:
+The runtime centrally handles:
 
-- permission checks
-- confirmation
-- cancellation
-- timeouts
-- retry policy
-- structured errors
-- audit/event emission
-- tool availability
+- Android permission checks
+- confirmation checks
+- session-scoped approval caching
+- coroutine cancellation propagation
+- structured tool failures
+- a single policy boundary before tool execution
 
 ### Layer E — Mobile Capability Layer
 
@@ -211,6 +206,8 @@ NexusWorkspace
   └─ observations
 ```
 
+The first implementation is `MobileWorkspace` plus `AppPrivateWorkspace`, with canonical-path traversal protection. A future SAF implementation can satisfy the same interface without changing the Agent Core.
+
 A workspace may represent:
 
 - an app-private project
@@ -228,9 +225,9 @@ This lets Nexus reuse the useful idea behind coding-agent workspaces without ass
 
 Borrow the separation between **tool execution** and **approval/sandbox policy** used by modern coding agents.
 
-Codex's runtime separates approval decisions from tool execution and supports cached session approvals and explicit forbidden states. Nexus should adopt the architectural separation, but translate it to Android permissions rather than shell sandboxing.
+Codex's runtime separates approval decisions from tool execution and supports cached session approvals and explicit forbidden states. Nexus adopts the architectural separation, but translates it to Android permissions rather than shell sandboxing.
 
-Recommended decisions:
+Current Nexus policy building blocks are:
 
 ```text
 ALLOW
@@ -240,13 +237,7 @@ NEEDS_ANDROID_PERMISSION
 FORBIDDEN
 ```
 
-Examples:
-
-- Read an already-authorized project file -> `ALLOW`
-- Repeatedly perform the same low-risk operation -> optionally `ALLOW_FOR_SESSION`
-- Send/delete/modify something consequential -> `NEEDS_CONFIRMATION`
-- Access a user-selected document tree -> `NEEDS_ANDROID_PERMISSION`
-- Unsupported or unsafe capability -> `FORBIDDEN`
+The current implementation maps these through `RiskLevel`, `ApprovalDecision`, `ToolApprovalStore`, and Android permission checks while preserving the existing public `ToolPermission` compatibility layer.
 
 Do not let an Agent convert a denied permission into a different tool call that bypasses the boundary.
 
@@ -254,15 +245,7 @@ Do not let an Agent convert a denied permission into a different tool call that 
 
 Every tool call should return structured evidence, not only free-form text.
 
-```kotlin
-data class ToolObservation(
-    val status: ObservationStatus,
-    val summary: String,
-    val evidence: List<EvidenceItem>,
-    val artifacts: List<ArtifactRef>,
-    val error: ToolError?,
-)
-```
+The current implementation introduces `AgentObservation` and `AgentContextStore`. Existing `ToolResult` remains backward-compatible and is recorded into the observation stream by `NexusAgent`.
 
 The verifier should consume observations and answer:
 
@@ -292,6 +275,8 @@ Tool failure
    +-- unsafe/unsupported? --> stop and explain
 ```
 
+The existing recovery policy remains the compatibility implementation. Architecture v2 additionally defines `AgentReplanner` and a conservative implementation so future model-assisted re-planning has a stable boundary.
+
 Each step should have limits for:
 
 - retry count
@@ -319,6 +304,8 @@ Persistent Memory
   -> task memory
   -> approved Skills
 ```
+
+`AgentContextStore` is intentionally bounded. Persistent Room memory remains a separate concern and should not be treated as the same state as an in-flight execution.
 
 Long histories should be compressed/summarized instead of passed blindly into every model call.
 
@@ -389,7 +376,7 @@ A model may change during one task without losing the canonical Agent state.
 - structured streaming/events
 - observability/tracing
 
-Koog explicitly targets Kotlin/JVM and multiplatform applications and provides advanced history compression, model switching, persistence, retry, structured streaming, and observability capabilities.
+Koog explicitly provides advanced history compression, model switching, persistence, retry, structured streaming, and observability capabilities.
 
 ### Do not copy blindly
 
@@ -458,49 +445,24 @@ agent/
 
 The exact package names can follow the existing project structure; this is a logical boundary, not a mandate for a large refactor.
 
-## 13. Implementation order
+## 13. Implementation status
 
-Do not rewrite the whole application.
-
-### Phase A — Agent Core Reliability
-
-1. Introduce `AgentSession` / `AgentTurn` / `AgentStep` state.
-2. Normalize tool execution through `ToolRuntime`.
-3. Add structured `AgentObservation`.
-4. Add cancellation and bounded retry contracts.
-5. Upgrade verification to consume structured observations.
-
-### Phase B — Mobile Runtime
-
-6. Add permission/confirmation policy interfaces.
-7. Wrap existing File Agent and App Agent behind the common runtime.
-8. Introduce `NexusWorkspace` for safe mobile resource boundaries.
-9. Add execution events for the timeline.
-
-### Phase C — Recovery Intelligence
-
-10. Add failure classification.
-11. Add bounded strategy re-planning.
-12. Add model switching while preserving canonical task state.
-
-### Phase D — Multi-Agent
-
-13. Add coordinator/delegation contracts.
-14. Start with two specialists where value is clear, e.g. Research + Verifier.
-15. Add broader specialist Agents only after coordination is reliable.
-
-### Phase E — Skills + Memory
-
-16. Connect Skills to tool availability and permission policy.
-17. Persist task/project memory separately from transient execution state.
-18. Add safe checkpoint/recovery behavior.
-
-### Phase F — Advanced Work Agents
-
-19. Office workflows.
-20. GitHub workflows.
-21. Coding Agent as a specialist/backend.
-22. CI diagnosis and bounded repair.
+| Capability | Architecture v2 | Branch implementation |
+|---|---|---|
+| Session / turn primitives | Defined | Implemented |
+| Explicit runtime state | Defined | Implemented |
+| Structured observations | Defined | Implemented |
+| Common tool runtime | Defined | Implemented |
+| Permission / confirmation boundary | Defined | Implemented |
+| Cancellation propagation | Defined | Implemented in runtime |
+| Mobile workspace | Defined | App-private implementation + traversal guard |
+| Multi-agent delegation | Defined | Coordinator contract + conservative implementation |
+| Failure-aware re-plan boundary | Defined | Replanner contract added |
+| Checkpoint persistence | Defined | Persistence contract + in-memory implementation |
+| Event / timeline stream | Defined | Event contract added |
+| Model switching | Defined | Existing ModelRouter remains authoritative |
+| Skills + persistent Memory | Defined | Existing modules remain separate; deeper integration follows |
+| Office / Web / GitHub / Coding specialists | Defined | Existing product integrations remain separate |
 
 ## 14. Acceptance criteria for Architecture v2
 
