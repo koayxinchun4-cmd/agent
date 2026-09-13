@@ -1,92 +1,117 @@
-# 🤖 Nexus AI 智能助手
+# 🤖 Nexus AI
 
-基于 **Android + Kotlin + Jetpack Compose + Google Gemini API** 的移动端 AI 智能助手项目。
+A mobile-first AI Agent for Android, built with **Kotlin, Jetpack Compose, and Gemini**.
 
-> **独立项目声明 / Independence Notice**
+Nexus is designed to understand user goals, decompose tasks, select models and tools, execute safely, verify results, and improve through Skills and Memory.
+
+## ✨ What Nexus Is Building
+
+- 🧠 **Agent Core** — intent understanding, task decomposition, planning, model routing, tool calling, verification, and recovery.
+- 📱 **Mobile Agent** — Android-safe File and App execution with explicit permissions and user confirmation for risky actions.
+- 🤖 **Multi-Model Intelligence** — Gemini and a provider abstraction designed for additional models and local fallback paths.
+- 🧰 **Skills + Memory** — reusable skills, conversation/project/task memory, and user preferences with local-first persistence.
+- 🌐 **Real-World Agents** — Web Research, Office, GitHub, and coding-oriented workflows.
+- 🧭 **Agent Timeline UI** — a structured execution timeline that shows understanding, planning, execution, verification, and completion.
+- 🌍 **Multilingual UX** — English-first project content with support planned for Traditional Chinese, Bahasa Melayu, and mixed-language input.
+
+## 🖼️ UI Concept
+
+![Nexus AI UI concept](docs/images/nexus-ui-mockup.jpg)
+
+The interface is designed around a task timeline rather than chat alone, making agent activity and execution state easier to understand on a phone.
+
+## 🧱 Architecture Direction
+
+```text
+User Goal
+   ↓
+Intent Understanding
+   ↓
+Task Decomposition
+   ↓
+Planner
+   ↓
+Model Router ─────→ AI Providers / Local Models
+   ↓
+Tool Registry
+   ↓
+Permission + Risk Checks
+   ↓
+Tool Execution
+   ↓
+Verification
+   ↓
+Result / Recovery
+```
+
+The Android app remains **phone-first, permission-aware, and Root-free**. Android framework behavior is kept behind explicit boundaries so pure application logic can remain fast and testable on the JVM.
+
+> **Independent Project Notice**
 >
-> Nexus AI 是一个独立开发的个人项目，**与 Marvis AI、MyNexusAI（https://app.mynexusai.com/）及其运营方、开发者或相关品牌不存在官方关联、合作、授权或隶属关系**。
->
-> 本项目在产品设计与技术探索过程中，可能参考公开可见的 AI Agent、移动端 AI 助手及相关产品的通用设计理念；这不代表复制其专有代码、资产、品牌或未公开技术，也不代表得到相关项目方的认可或背书。
->
-> “Marvis AI”、“MyNexusAI”及其他第三方名称、商标和产品标识归其各自权利人所有。本项目不使用这些名称作为自己的产品名称或品牌标识。
+> Nexus AI is an independent personal project. It is not officially affiliated with, partnered with, authorized by, or endorsed by Marvis AI, MyNexusAI, or their operators, developers, or related brands.
 
-## ✨ 核心特性
+## 🛠️ Tech Stack
 
-- 🧠 Gemini AI 对话能力，并支持无有效 API Key 时的本地自主引擎回退
-- 🎨 Jetpack Compose + Material 3 UI
-- 💾 Room + KSP 本地数据与会话持久化
-- 🌐 Retrofit + Moshi + OkHttp 网络通信
-- 💻 Kotlin / Java / Python / JavaScript / SQL 等编程辅助
-- 📄 Office 文档、表格、PPT 等内容生成与整理能力
-- 🔄 GitHub 仓库、Commit、Issue、Pull Request 等联动能力
-- 📈 技能成长与任务完成观察机制
-
-## 🛠️ 技术栈
-
-| 模块 | 技术 |
+| Area | Technology |
 | :--- | :--- |
-| 语言 | Kotlin 2.2.10 |
+| Language | Kotlin 2.2.10 |
 | Android | Android Gradle Plugin 8.7.3 / compileSdk 35 |
 | UI | Jetpack Compose / Material 3 |
-| 状态管理 | ViewModel + StateFlow |
-| 数据库 | Room 2.7.1 + KSP |
-| 网络 | Retrofit 2 + OkHttp + Moshi |
-| AI | Google Gemini API |
-| 异步 | Kotlin Coroutines |
+| State | ViewModel + StateFlow |
+| Database | Room 2.7.1 + KSP |
+| Networking | Retrofit 2 + OkHttp + Moshi |
+| AI | Google Gemini API + provider abstraction |
+| Async | Kotlin Coroutines |
 | CI | GitHub Actions |
 
-## 🚀 快速开始
+## 🚀 Getting Started
 
-### 1. 克隆仓库
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/koayxinchun4-cmd/agent.git
 cd agent
 ```
 
-### 2. 配置 Gemini API Key（可选）
+### 2. Configure Gemini API Key (optional)
 
-项目使用 Secrets Gradle Plugin 从根目录 `.env` 读取 Gemini API Key。
-
-复制模板：
+Nexus uses the Secrets Gradle Plugin to read the Gemini API key from a root `.env` file.
 
 ```bash
 cp .env.example .env
 ```
 
-然后编辑 `.env`：
+Then edit `.env`:
 
 ```env
-GEMINI_API_KEY=你的_GEMINI_API_KEY
+GEMINI_API_KEY=your_GEMINI_API_KEY
 ```
 
-`.env` 已被 `.gitignore` 忽略，**不要将真实 API Key 提交到 GitHub**。
+`.env` is ignored by Git. **Never commit a real API key to GitHub.**
 
-如果没有有效的 API Key，应用会回退到本地自主引擎。
+If no valid API key is available, Nexus can fall back to its local autonomous engine path where supported.
 
-> 如果 API Key 曾经被公开发布或直接提交到仓库，请先在 Google AI Studio / Google Cloud 中撤销旧 Key 并重新生成。
+## 📦 Local Build
 
-## 📦 本地构建
-
-环境要求：
+Requirements:
 
 - JDK 17
 - Android SDK 35
-- Android Studio（建议使用较新的稳定版）
+- A recent stable Android Studio release is recommended
 
-运行单元测试：
+Run JVM unit tests:
 
 ```bash
 ./gradlew testDebugUnitTest
 ```
 
-生成 Debug APK：
+Build a Debug APK:
 
 ```bash
 ./gradlew :app:assembleDebug
 ```
 
-APK 输出位置：
+APK output:
 
 ```text
 app/build/outputs/apk/debug/app-debug.apk
@@ -94,48 +119,38 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ## 🤖 GitHub Actions
 
-Android CI 工作流位于：
+The Android CI workflow is located at `.github/workflows/android-ci.yml`.
 
-```text
-.github/workflows/android-ci.yml
-```
+The workflow validates pushes to `main` and Pull Requests targeting `main`. The validation path includes unit tests, lint, Debug APK packaging, APK validation, and Gradle wrapper checks.
 
-当前工作流会在：
-
-- `main` 分支 push
-- 针对 `main` 的 Pull Request
-
-时自动执行 Android Debug APK 构建，并将 `app-debug.apk` 上传为 GitHub Actions Artifact。
-
-### GitHub Secret
-
-如果希望 CI 构建时使用 Gemini API，请在：
-
-**Repository → Settings → Secrets and variables → Actions**
-
-创建以下 Repository Secret：
+For CI builds that use Gemini, configure the repository secret:
 
 ```text
 GEMINI_API_KEY
 ```
 
-CI 会在构建过程中临时生成 `.env`，不会要求把真实 API Key 写进仓库。
+CI injects the secret into a temporary `.env` during the build. The real key is not stored in the repository.
 
-## 🔒 安全说明
+## 🔐 Security & Execution Principles
 
-- 不要提交 `.env`。
-- 不要把真实 Gemini API Key 写进 Kotlin、Gradle、README 或其他源码文件。
-- `.env.example` 只保留占位符。
-- GitHub Actions 使用 `GEMINI_API_KEY` Secret 注入构建环境。
-- GitHub Token 等用户凭据应使用安全的本地存储机制，不应硬编码。
+- Never commit `.env` or real API keys.
+- Never hard-code Gemini or GitHub credentials in source code.
+- User credentials and tokens must use secure local storage and stay within the integration that needs them.
+- Android permissions are explicit: tools do not bypass or silently request permissions.
+- Risky or irreversible actions require user confirmation before execution.
+- File operations validate paths and SAF boundaries before opening resources.
+- App execution validates package names and uses explicit Android launch intents.
+- **Pure logic is tested on the JVM. Android-specific behavior is validated in Android Runtime.**
 
-## 📂 项目结构
+See [`docs/engineering-principles.md`](docs/engineering-principles.md) for the JVM vs Android Runtime testing rule.
+
+## 📂 Project Structure
 
 ```text
 ├── app/
 │   ├── src/main/
-│   │   ├── java/com/example/       # Android/Kotlin 源码
-│   │   ├── res/                    # Android 资源
+│   │   ├── java/com/example/       # Android/Kotlin source
+│   │   ├── res/                    # Android resources
 │   │   └── AndroidManifest.xml
 │   └── build.gradle.kts
 ├── gradle/
@@ -143,7 +158,11 @@ CI 会在构建过程中临时生成 `.env`，不会要求把真实 API Key 写�
 ├── .github/
 │   └── workflows/
 │       └── android-ci.yml          # Android CI
-├── .env.example                    # API Key 模板
+├── docs/
+│   ├── engineering-principles.md  # Engineering and testing rules
+│   └── images/
+│       └── nexus-ui-mockup.jpg     # UI concept
+├── .env.example                    # API key template
 ├── .gitignore
 ├── build.gradle.kts
 ├── settings.gradle.kts
@@ -151,36 +170,43 @@ CI 会在构建过程中临时生成 `.env`，不会要求把真实 API Key 写�
 └── README.md
 ```
 
-## 🎯 构建目标
+## 🗺️ Roadmap
 
-项目当前的主要验证目标是确保以下命令能够成功执行：
+The current roadmap is maintained in [`CURRENT_ROADMAP.md`](CURRENT_ROADMAP.md).
 
-```bash
-./gradlew :app:assembleDebug
-```
+Major milestones:
 
-并通过 GitHub Actions 持续验证 Android 项目的可构建性，同时生成可下载的 Debug APK Artifact。
+1. **Agent Core Reliability**
+2. **Mobile Agent**
+3. **Multi-Model Intelligence**
+4. **Skills + Memory**
+5. **Real-World Work Agents**
+6. **Nexus Agent Studio**
+7. **Product Experience**
+
+Development follows small, verifiable delivery gates: implement one capability, add focused tests, run CI, confirm the product contract, then continue.
+
+## 📚 Documentation
+
+- [`CURRENT_ROADMAP.md`](CURRENT_ROADMAP.md) — product direction and delivery priorities
+- [`docs/engineering-principles.md`](docs/engineering-principles.md) — engineering and testing boundaries
+- [`docs/external-references.md`](docs/external-references.md) — external ecosystem references and integration notes
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — contribution guidelines
 
 ## 📄 License
 
-本项目采用 **GNU General Public License v3.0 (GPLv3)** 开源。
+Nexus AI is released under the **GNU General Public License v3.0 (GPLv3)**.
 
-Nexus AI 是免费且开放源码的项目，欢迎任何人使用、研究、修改、Fork 和贡献，但所有 GPLv3-covered 代码的再发布和衍生版本都必须遵守 GPLv3 的适用条款，并保留适用的版权、许可证、署名及修改说明。
+Nexus AI is free and open source. You may use, study, modify, fork, and contribute to the project, subject to the applicable GPLv3 terms.
 
-### Attribution / 归属
+Original project copyright belongs to **koayxinchun4-cmd and project contributors**. Applicable copyright, license, attribution, and modification notices must be preserved when redistributing covered code.
 
-原始项目版权归 **koayxinchun4-cmd 和项目贡献者**所有。使用、Fork 或再发布 Nexus AI 的代码时，不得删除适用的原始版权和许可证声明，也不得将 Nexus AI 原作者或贡献者创作的代码虚假声称为自己独立原创。
+Independent forks, applications, services, and commercial projects may operate independently. Their user data, conversations, files, business data, content, and operational behavior do not automatically become Nexus AI project data merely because they use Nexus AI.
 
-### Independent forks and data
-
-基于 Nexus AI 创建的 Fork、应用、服务和商业项目可以独立运营。其用户数据、聊天记录、文件、业务数据、内容、运营行为和其他独立产生的数据，不会仅因为使用 Nexus AI 就自动成为 Nexus AI 项目的数据，也不会自动要求向 Nexus AI 原项目公开。
-
-这些独立项目及其运营行为不代表 Nexus AI 或其原作者、贡献者；除非另有明确书面说明，Nexus AI 项目不对第三方 Fork、应用、服务或其数据与行为背书或承担责任。
-
-完整许可证说明请参阅仓库中的 `LICENSE` 文件及 GNU GPLv3 官方文本。
+See [`LICENSE`](LICENSE) and the official GNU GPLv3 text for the complete license terms.
 
 ## 🤝 Community
 
-**Nexus AI is free and open source — everyone is welcome to join us. ❤️**
+**Nexus AI is free and open source — everyone is welcome to join us.**
 
-欢迎提交 Issue、Pull Request、功能建议、Bug 修复和新的 Agent / Skill。贡献请先阅读 `CONTRIBUTING.md`。
+Issues, Pull Requests, feature ideas, bug fixes, and new Agent / Skill contributions are welcome. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) before contributing.
