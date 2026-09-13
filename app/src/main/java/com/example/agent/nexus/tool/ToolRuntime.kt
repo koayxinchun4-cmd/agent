@@ -33,26 +33,50 @@ class DefaultToolRuntime(
     ): ToolRuntimeResult {
         currentCoroutineContext().ensureActive()
 
-        if (!grantedPermissions.containsAll(tool.requiredPermissions)) {
-            val missing = tool.requiredPermissions - grantedPermissions
+        val effectivePermissions = if (grantedPermissions.isEmpty()) {
+            task.metadata[AgentTask.GRANTED_PERMISSIONS]
+                ?.split(',')
+                ?.map(String::trim)
+                ?.filter(String::isNotEmpty)
+                ?.toSet()
+                .orEmpty()
+        } else {
+            grantedPermissions
+        }
+
+        if (!effectivePermissions.containsAll(tool.requiredPermissions)) {
+            val missing = tool.requiredPermissions - effectivePermissions
             return ToolRuntimeResult.Denied(
-                "Missing required Android permission(s): ${missing.sorted().joinToString() }"
+                "Missing required Android permission(s): ${missing.sorted().joinToString()}"
             )
         }
 
+        val effectiveConfirmation = confirmationGranted ||
+            task.metadata[AgentTask.CONFIRMATION_GRANTED] == "true"
         if (tool.riskLevel == RiskLevel.REQUIRES_CONFIRMATION) {
             val approved = approvals.get(sessionId, tool.id)
-            if (approved != ApprovalDecision.APPROVED && !confirmationGranted) {
+            if (approved != ApprovalDecision.APPROVED && !effectiveConfirmation) {
                 return ToolRuntimeResult.Denied(
                     "User confirmation is required before executing ${tool.name}"
                 )
             }
-            if (confirmationGranted) {
+            if (effectiveConfirmation) {
                 approvals.put(sessionId, tool.id, ApprovalDecision.APPROVED, ApprovalScope.SESSION)
             }
         }
 
         currentCoroutineContext().ensureActive()
-        return ToolRuntimeResult.Success(tool.execute(task))
+        return runCatching { tool.execute(task) }
+            .fold(
+                onSuccess = { ToolRuntimeResult.Success(it) },
+                onFailure = { error ->
+                    ToolRuntimeResult.Success(
+                        ToolResult.Failure(
+                            "Tool execution failed: ${error.message ?: "unknown error"}",
+                            error
+                        )
+                    )
+                }
+            )
     }
 }
