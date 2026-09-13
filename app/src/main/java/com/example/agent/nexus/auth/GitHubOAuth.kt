@@ -34,6 +34,8 @@ object GitHubOAuth {
             append("&redirect_uri=").append(urlEncode(redirectUri))
             append("&scope=").append(urlEncode(scope))
             append("&state=").append(urlEncode(state))
+            append("&code_challenge=").append(urlEncode(challenge))
+            append("&code_challenge_method=S256")
             append("&allow_signup=false")
         }
         return GitHubOAuthRequest(state, verifier, challenge, url)
