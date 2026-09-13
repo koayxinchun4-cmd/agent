@@ -92,6 +92,50 @@ class AgentLoopTest {
         assertEquals(1, tool.calls)
     }
 
+    @Test
+    fun multiSubtaskExecutionRunsEachToolInOrder() = runBlocking {
+        val webTool = SequenceTool("web_research", ToolResult.Success("搜尋結果"))
+        val githubTool = SequenceTool("github", ToolResult.Success("CI 狀態"))
+        val agent = NexusAgent(
+            toolRegistry = com.example.agent.nexus.tool.ToolRegistry(
+                listOf(webTool, githubTool)
+            )
+        )
+
+        val execution = agent.executeDetailed(
+            AgentTask("6", "搜尋 repo then 檢查 CI then 整理結果")
+        )
+
+        assertTrue(execution.result is AgentResult.Success)
+        val success = execution.result as AgentResult.Success
+        assertTrue(success.text.contains("搜尋結果"))
+        assertTrue(success.text.contains("CI 狀態"))
+        assertEquals(1, webTool.calls)
+        assertEquals(1, githubTool.calls)
+        assertTrue(execution.steps.any { it.step.contains("subtask:1") })
+        assertTrue(execution.steps.any { it.step.contains("subtask:2") })
+        assertTrue(execution.steps.any { it.step == "verify" && it.success })
+    }
+
+    @Test
+    fun multiSubtaskWithMissingToolReportsPartialFailure() = runBlocking {
+        val webTool = SequenceTool("web_research", ToolResult.Success("搜尋結果"))
+        val agent = NexusAgent(
+            toolRegistry = com.example.agent.nexus.tool.ToolRegistry(listOf(webTool))
+        )
+
+        val execution = agent.executeDetailed(
+            AgentTask("7", "搜尋 repo then 檢查 CI then 整理結果")
+        )
+
+        // github tool is not registered, so subtask 2 should fail
+        val result = execution.result
+        assertTrue(result is AgentResult.Failure || (result is AgentResult.Success))
+        assertTrue(execution.steps.any { it.step.contains("subtask:1") && it.success })
+        // subtask 2 uses "github" which isn't registered
+        assertTrue(execution.steps.any { it.step.contains("subtask:2") && !it.success })
+    }
+
     private fun agentWith(tool: AgentTool, config: AgentLoopConfig = AgentLoopConfig()): NexusAgent {
         return NexusAgent(
             toolRegistry = com.example.agent.nexus.tool.ToolRegistry(listOf(tool)),

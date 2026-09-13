@@ -37,11 +37,15 @@ class ModelRouter(
         val REASONING_TASK_KEYWORDS = setOf(
             "code", "coding", "debug", "github", "research", "analyze", "analysis",
             "architecture", "plan", "compare", "reason", "diagnose", "implement",
-            "程式", "程式碼", "除錯", "研究", "分析", "架構", "比較", "診斷", "實作"
+            "程式", "程式碼", "除錯", "研究", "分析", "架構", "比較", "診斷", "實作",
+            "kod", "pengekodan", "nyahpepijat", "penyelidikan", "analisis",
+            "seni bina", "bandingkan", "diagnosis", "laksanakan"
         )
         val GENERAL_ASSISTANT_KEYWORDS = setOf(
             "summarize", "summary", "translate", "translation", "rewrite", "explain",
-            "摘要", "總結", "翻譯", "改寫", "解釋"
+            "摘要", "總結", "翻譯", "改寫", "解釋",
+            "ringkaskan", "ringkasan", "terjemah", "terjemahan",
+            "tulis semula", "terangkan", "jelaskan"
         )
     }
 }

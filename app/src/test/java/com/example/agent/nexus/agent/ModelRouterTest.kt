@@ -55,4 +55,34 @@ class ModelRouterTest {
 
         assertEquals(ModelRoute.Local, router.route(task, answerPlan))
     }
+
+    @Test
+    fun `malay reasoning tasks route to openrouter then gemini`() {
+        val router = ModelRouter(ModelAvailability(geminiAvailable = true, openRouterAvailable = true))
+
+        assertEquals(
+            ModelRoute.OpenRouter,
+            router.route(task.copy(input = "analisis seni bina ini"), answerPlan)
+        )
+        assertEquals(
+            ModelRoute.Gemini,
+            ModelRouter(ModelAvailability(geminiAvailable = true, openRouterAvailable = false))
+                .route(task.copy(input = "bandingkan dua pilihan"), answerPlan)
+        )
+    }
+
+    @Test
+    fun `malay general assistant tasks prefer gemini then openrouter`() {
+        val router = ModelRouter(ModelAvailability(geminiAvailable = true, openRouterAvailable = true))
+
+        assertEquals(
+            ModelRoute.Gemini,
+            router.route(task.copy(input = "ringkaskan dokumen ini"), answerPlan)
+        )
+        assertEquals(
+            ModelRoute.OpenRouter,
+            ModelRouter(ModelAvailability(geminiAvailable = false, openRouterAvailable = true))
+                .route(task.copy(input = "terjemahkan perenggan ini"), answerPlan)
+        )
+    }
 }

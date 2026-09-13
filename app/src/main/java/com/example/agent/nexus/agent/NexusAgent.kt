@@ -119,6 +119,19 @@ class NexusAgent(
             return AgentExecution(plan, steps, result, context = executionContext)
         }
 
+        // Subtask-aware execution: when the plan decomposes the task into
+        // multiple subtasks with different tool assignments, execute each
+        // subtask with its assigned tool in order and combine results.
+        val hasMultipleSubtaskTools = plan.subtasks.size > 1 &&
+            plan.subtaskToolIds.any { it != null } &&
+            plan.subtaskToolIds.filterNotNull().distinct().size > 1
+
+        if (hasMultipleSubtaskTools) {
+            return executeSubtasks(
+                plan, currentTask, session, steps, executionContext, onProgress
+            )
+        }
+
         val tool = toolRegistry.get(toolId)
         if (tool == null) {
             val result = AgentResult.Failure("Nexus 找不到工具：$toolId")
@@ -207,6 +220,107 @@ class NexusAgent(
         )
         emit(AgentStepResult("answer", false, result.message), attempts)
         return AgentExecution(plan, steps, result, attempts, executionContext)
+    }
+
+    private suspend fun executeSubtasks(
+        plan: AgentPlan,
+        task: AgentTask,
+        session: AgentSession,
+        steps: MutableList<AgentStepResult>,
+        executionContext: AgentExecutionContext,
+        onProgress: (AgentProgress) -> Unit
+    ): AgentExecution {
+        val results = mutableListOf<String>()
+        val failures = mutableListOf<String>()
+
+        fun emitStep(step: AgentStepResult) {
+            steps += step
+            onProgress(AgentProgress(step = step, attempt = 1, steps = steps.toList()))
+        }
+
+        plan.subtasks.forEachIndexed { index, subtaskText ->
+            val subtaskToolId = plan.subtaskToolIds.getOrNull(index)
+            val subtaskLabel = "subtask:${index + 1}"
+
+            if (subtaskToolId == null) {
+                emitStep(AgentStepResult(subtaskLabel, true, "No tool needed: $subtaskText"))
+                results.add(subtaskText)
+                return@forEachIndexed
+            }
+
+            val tool = toolRegistry.get(subtaskToolId)
+            if (tool == null) {
+                val msg = "Tool not found: $subtaskToolId"
+                emitStep(AgentStepResult(subtaskLabel, false, msg))
+                failures.add("$subtaskLabel: $msg")
+                return@forEachIndexed
+            }
+
+            val subtask = AgentTask(
+                id = "${task.id}-sub${index + 1}",
+                input = subtaskText,
+                metadata = task.metadata
+            )
+
+            emitStep(AgentStepResult("use_tool:$subtaskToolId#$subtaskLabel", true, "Executing: $subtaskText"))
+
+            val runtimeResult = toolRuntime.execute(
+                sessionId = session.id,
+                task = subtask,
+                tool = tool
+            )
+
+            when (val toolResult = when (runtimeResult) {
+                is ToolRuntimeResult.Success -> runtimeResult.result
+                is ToolRuntimeResult.Denied -> ToolResult.Failure(runtimeResult.message)
+            }) {
+                is ToolResult.Success -> {
+                    val verified = verifier.verify(toolResult)
+                    when (verified) {
+                        is VerificationResult.Passed -> {
+                            emitStep(AgentStepResult(subtaskLabel, true, toolResult.text))
+                            results.add(toolResult.text)
+                        }
+                        is VerificationResult.Retry -> {
+                            emitStep(AgentStepResult(subtaskLabel, false, "Subtask failed verification: ${verified.reason}"))
+                            failures.add("$subtaskLabel: ${verified.reason}")
+                        }
+                    }
+                }
+                is ToolResult.Failure -> {
+                    emitStep(AgentStepResult(subtaskLabel, false, toolResult.message))
+                    failures.add("$subtaskLabel: ${toolResult.message}")
+                }
+            }
+        }
+
+        val combinedText = results.joinToString("\n\n")
+        val finalResult = if (failures.isEmpty()) {
+            emitStep(AgentStepResult("verify", true, "All subtasks completed successfully"))
+            AgentResult.Success("$combinedText\n\n[Model route: ${plan.route}; subtasks: ${plan.subtasks.size}]")
+        } else {
+            val allOutput = listOfNotNull(
+                combinedText.takeIf { it.isNotBlank() },
+                "Failures:\n${failures.joinToString("\n")}"
+            ).joinToString("\n\n")
+            emitStep(AgentStepResult("verify", false, "${failures.size} subtask(s) failed"))
+            AgentResult.Failure(allOutput)
+        }
+
+        emitStep(AgentStepResult("answer", failures.isEmpty(), finalResult.let {
+            when (it) {
+                is AgentResult.Success -> it.text
+                is AgentResult.Failure -> it.message
+            }
+        }))
+
+        return AgentExecution(
+            plan = plan,
+            steps = steps.toList(),
+            result = finalResult,
+            attempts = 1,
+            context = executionContext
+        )
     }
 
     private fun planAndRoute(task: AgentTask): AgentPlan {
