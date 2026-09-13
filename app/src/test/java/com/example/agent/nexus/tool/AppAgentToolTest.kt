@@ -57,4 +57,18 @@ class AppAgentToolTest {
         assertFalse(AppAgentTool.isValidPackageName("1com.example.app"))
         assertFalse(AppAgentTool.isValidPackageName("com..example.app"))
     }
+
+    @Test
+    fun buildsExplicitLauncherIntent() {
+        val intent = AppAgentTool.buildLaunchIntent("com.example.demo")
+
+        assertEquals("com.example.demo", intent?.`package`)
+        assertEquals("android.intent.action.MAIN", intent?.action)
+        assertTrue(intent?.categories?.contains("android.intent.category.LAUNCHER") == true)
+    }
+
+    @Test
+    fun refusesToBuildIntentForInvalidPackage() {
+        assertNull(AppAgentTool.buildLaunchIntent("com.example/demo"))
+    }
 }
