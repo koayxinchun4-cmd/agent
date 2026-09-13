@@ -18,10 +18,12 @@ class AppAgentTool(
         val packageName = extractPackageName(task)
             ?: return ToolResult.Failure("Please provide a valid App package name, for example: package:com.example.app")
 
+        val intent = buildLaunchIntent(packageName)
+            ?: return ToolResult.Failure("Please provide a valid App package name, for example: package:com.example.app")
         return try {
-            val intent = context.packageManager.getLaunchIntentForPackage(packageName)
-                ?: return ToolResult.Failure("App cannot be opened: $packageName")
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) == null) {
+                return ToolResult.Failure("App cannot be opened: $packageName")
+            }
             context.startActivity(intent)
             ToolResult.Success("Opened App: $packageName")
         } catch (error: SecurityException) {
@@ -53,6 +55,30 @@ class AppAgentTool(
             return task.metadata[PACKAGE_KEY]?.trim()
                 ?.takeIf(::isValidPackageName)
                 ?: PACKAGE_PATTERN.find(task.input)?.groupValues?.get(1)
+        }
+
+        /** Pure Kotlin contract for the only Intent shape App Agent is allowed to launch. */
+        data class LaunchIntentSpec(
+            val packageName: String,
+            val action: String = Intent.ACTION_MAIN,
+            val category: String = Intent.CATEGORY_LAUNCHER,
+            val flags: Int = Intent.FLAG_ACTIVITY_NEW_TASK
+        )
+
+        fun buildLaunchIntentSpec(packageName: String): LaunchIntentSpec? {
+            val normalizedPackageName = packageName.trim()
+            if (!isValidPackageName(normalizedPackageName)) return null
+            return LaunchIntentSpec(packageName = normalizedPackageName)
+        }
+
+        /** Converts the validated, testable contract into the Android Intent used at runtime. */
+        fun buildLaunchIntent(packageName: String): Intent? {
+            val spec = buildLaunchIntentSpec(packageName) ?: return null
+            return Intent(spec.action).apply {
+                addCategory(spec.category)
+                setPackage(spec.packageName)
+                addFlags(spec.flags)
+            }
         }
     }
 }
