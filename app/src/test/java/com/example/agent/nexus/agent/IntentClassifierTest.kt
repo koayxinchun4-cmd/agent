@@ -77,4 +77,14 @@ class IntentClassifierTest {
     fun `classifies malay office intent with hamparan`() {
         assertEquals(AgentIntent.Office, classifier.classify("buat hamparan baru"))
     }
+
+    @Test
+    fun `classifies chinese office intent with report keyword`() {
+        assertEquals(AgentIntent.Office, classifier.classify("整理報告"))
+    }
+
+    @Test
+    fun `classifies english office intent with report keyword`() {
+        assertEquals(AgentIntent.Office, classifier.classify("write a report"))
+    }
 }

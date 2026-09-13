@@ -13,8 +13,8 @@ class IntentClassifier {
         return when {
             isAppRequest(normalized) -> AgentIntent.App
             containsAny(normalized, "github", "pull request", "issue", "ci/cd", "ci") -> AgentIntent.GitHub
-            containsAny(normalized, "office", "document", "spreadsheet", "presentation", "dokumen", "hamparan", "persembahan") ||
-                containsAny(input, "簡報", "試算表") -> AgentIntent.Office
+            containsAny(normalized, "office", "document", "spreadsheet", "presentation", "dokumen", "hamparan", "persembahan", "report") ||
+                containsAny(input, "簡報", "試算表", "報告", "报告") -> AgentIntent.Office
             containsAny(normalized, "memory", "remember", "forget", "ingat", "hafal") ||
                 containsAny(input, "記憶", "記住") -> AgentIntent.Memory
             containsAny(normalized, "skill", "skills", "kemahiran") || containsAny(input, "技能") -> AgentIntent.Skills
