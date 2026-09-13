@@ -1,6 +1,7 @@
 package com.example.agent.nexus.tool
 
 import java.io.ByteArrayInputStream
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -32,5 +33,29 @@ class SafFileReaderTest {
         val result = reader.read("  ")
 
         assertTrue(result is ToolResult.Failure)
+    }
+
+    @Test
+    fun rejectsNonSafUriBeforeOpeningStream() {
+        var opened = false
+        val reader = SafFileReader {
+            opened = true
+            ByteArrayInputStream("unused".toByteArray())
+        }
+
+        val result = reader.read("file:///storage/emulated/0/Download/test.txt")
+
+        assertTrue(result is ToolResult.Failure)
+        assertFalse(opened)
+    }
+
+    @Test
+    fun acceptsContentUriCaseInsensitively() {
+        assertTrue(SafFileReader.isValidSafUri("CONTENT://provider/document/1"))
+    }
+
+    @Test
+    fun rejectsContentUriWithoutAuthority() {
+        assertFalse(SafFileReader.isValidSafUri("content:///document/1"))
     }
 }
