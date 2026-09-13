@@ -166,8 +166,11 @@ class NexusAgent(
         // If the final planned subtask is answer-only, use the selected model to
         // synthesize all verified observations instead of returning raw tool data.
         val finalSubtask = plan.subtasks.lastOrNull()
-        val finalToolId = plan.subtaskToolIds.lastOrNull()
-            ?: plan.toolId.takeIf { plan.subtasks.size == 1 }
+        val finalToolId = if (plan.subtasks.size == 1) {
+            plan.subtaskToolIds.firstOrNull() ?: plan.toolId
+        } else {
+            plan.subtaskToolIds.lastOrNull()
+        }
         if (finalSubtask != null && finalToolId == null && observations.isNotEmpty()) {
             val synthesisTask = currentTask.copy(
                 input = buildString {
