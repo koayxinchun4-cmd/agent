@@ -55,7 +55,7 @@ class NexusAgent(
             ),
             metadata = task.metadata
         )
-        var plan = planAndRoute(currentTask)
+        val plan = planAndRoute(currentTask)
         val steps = mutableListOf<AgentStepResult>()
 
         fun emit(step: AgentStepResult, attempt: Int = 0) {
@@ -199,7 +199,11 @@ class NexusAgent(
                 (lastToolResult as? ToolResult.Failure)?.cause
             )
         }
-        emit(AgentStepResult("answer", result is AgentResult.Success, result.message), totalAttempts)
+        val answerMessage = when (result) {
+            is AgentResult.Success -> result.text
+            is AgentResult.Failure -> result.message
+        }
+        emit(AgentStepResult("answer", result is AgentResult.Success, answerMessage), totalAttempts)
         return AgentExecution(plan, steps, result, totalAttempts, executionContext)
     }
 
