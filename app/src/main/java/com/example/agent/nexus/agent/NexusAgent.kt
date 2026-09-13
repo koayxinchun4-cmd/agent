@@ -34,8 +34,7 @@ class NexusAgent(
     fun previewConfirmation(task: AgentTask): AgentConfirmationRequest? {
         if (task.metadata[AgentTask.CONFIRMATION_GRANTED] == "true") return null
         val plan = planAndRoute(task)
-        val plannedToolIds = plannedToolIds(plan)
-        return plannedToolIds.asSequence()
+        return plannedToolIds(plan).asSequence()
             .mapNotNull(toolRegistry::get)
             .firstOrNull { it.riskLevel == RiskLevel.REQUIRES_CONFIRMATION }
             ?.let { tool -> AgentConfirmationRequest(task = task, tool = tool, plan = plan) }
@@ -69,7 +68,7 @@ class NexusAgent(
         emit(AgentStepResult("plan", true, "Selected ${plan.toolId ?: "direct answer"} execution path"))
 
         val plannedToolIds = plannedToolIds(plan)
-        val hasToolBackedSubtask = plannedToolIds.any()
+        val hasToolBackedSubtask = plannedToolIds.isNotEmpty()
         if (!hasToolBackedSubtask) {
             return generateModelAnswer(
                 task = currentTask,
@@ -87,6 +86,7 @@ class NexusAgent(
         for (index in plan.subtasks.indices) {
             val subtask = plan.subtasks[index]
             val toolId = plan.subtaskToolIds.getOrNull(index)
+                ?: plan.toolId.takeIf { plan.subtasks.size == 1 }
             if (toolId == null) continue
 
             val subtaskTask = currentTask.copy(input = subtask)
@@ -142,7 +142,6 @@ class NexusAgent(
                         }
 
                         currentTask = recoveryPolicy.adjust(currentTask, diagnosis, attempts)
-                        plan = planAndRoute(currentTask)
                         emit(AgentStepResult("adjust_plan", true, "Adjusted input for recovery attempt ${attempts + 1}"), attempts)
                         emit(AgentStepResult("verify", false, "Recovery prepared; retrying"), attempts)
                     }
@@ -168,6 +167,7 @@ class NexusAgent(
         // synthesize all verified observations instead of returning raw tool data.
         val finalSubtask = plan.subtasks.lastOrNull()
         val finalToolId = plan.subtaskToolIds.lastOrNull()
+            ?: plan.toolId.takeIf { plan.subtasks.size == 1 }
         if (finalSubtask != null && finalToolId == null && observations.isNotEmpty()) {
             val synthesisTask = currentTask.copy(
                 input = buildString {
@@ -253,7 +253,9 @@ class NexusAgent(
     }
 
     private fun plannedToolIds(plan: AgentPlan): List<String> =
-        if (plan.subtasks.isNotEmpty()) {
+        if (plan.subtasks.size == 1) {
+            listOfNotNull(plan.subtaskToolIds.firstOrNull() ?: plan.toolId)
+        } else if (plan.subtasks.isNotEmpty()) {
             plan.subtaskToolIds.filterNotNull()
         } else {
             listOfNotNull(plan.toolId)
