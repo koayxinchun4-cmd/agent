@@ -19,6 +19,7 @@ class AppAgentTool(
             ?: return ToolResult.Failure("Please provide a valid App package name, for example: package:com.example.app")
 
         val intent = buildLaunchIntent(packageName)
+            ?: return ToolResult.Failure("Please provide a valid App package name, for example: package:com.example.app")
         return try {
             if (context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) == null) {
                 return ToolResult.Failure("App cannot be opened: $packageName")
