@@ -2,6 +2,7 @@ name: Android CI
 
 # Primary automatic CI gate while reliability errors are being reduced.
 # Other workflows are parked/manual-only until Android CI stability improves.
+# Keep this workflow sensitive to Agent Core changes so PR fixes are validated.
 on:
   push:
     branches: [ "main" ]
