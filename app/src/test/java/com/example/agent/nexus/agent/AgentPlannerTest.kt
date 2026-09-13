@@ -68,4 +68,28 @@ class AgentPlannerTest {
         assertEquals("subtask:3:整理結果", plan.steps[5])
         assertTrue(plan.steps.last() == "answer")
     }
+
+    @Test
+    fun `decomposes malay task with dan and assigns per-subtask tools`() {
+        val plan = planner.plan(
+            AgentTask("6", "cari maklumat tentang AI dan ringkaskan hasil"),
+            setOf("web_research", "office", "local_task")
+        )
+
+        assertEquals(listOf("cari maklumat tentang AI", "ringkaskan hasil"), plan.subtasks)
+        assertEquals("web_research", plan.subtaskToolIds[0])
+    }
+
+    @Test
+    fun `decomposes chinese task with yi-ji connector`() {
+        val plan = planner.plan(
+            AgentTask("7", "搜尋資料以及整理報告"),
+            setOf("web_research", "office", "local_task")
+        )
+
+        assertEquals(listOf("搜尋資料", "整理報告"), plan.subtasks)
+        assertEquals(2, plan.subtasks.size)
+        assertEquals("web_research", plan.subtaskToolIds[0])
+        assertEquals("office", plan.subtaskToolIds[1])
+    }
 }

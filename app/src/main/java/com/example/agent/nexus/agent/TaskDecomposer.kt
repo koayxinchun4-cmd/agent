@@ -24,7 +24,26 @@ class TaskDecomposer {
         value.replaceFirst(LIST_MARKER, "").trim()
 
     private companion object {
-        val DELIMITERS = Regex("\\s*(?:\\bthen\\b|\\band then\\b|\\bafter that\\b|\\bnext\\b|;|\\n|、|，|；|然后|接著|接着|再|最後|最后)\\s*", RegexOption.IGNORE_CASE)
-        val LIST_MARKER = Regex("^(?:[-*•]|\\d+[.)]|[一二三四五六七八九十]+[、.)])\\s*")
+        val DELIMITERS = Regex(
+            "\\s*(?:" +
+                // English connectors
+                "\\band\\s+then\\b|\\bthen\\b|\\bafter\\s+that\\b|\\bnext\\b|" +
+                "\\band\\s+also\\b|\\bas\\s+well\\s+as\\b|\\bplus\\b|" +
+                // Chinese connectors
+                "然后|然後|接著|接着|再|最後|最后|" +
+                "以及|還有|还有|" +
+                // Malay connectors
+                "\\bdan\\s+juga\\b|\\bdan\\b|\\bserta\\b|\\bkemudian\\b|" +
+                "\\bselepas\\s+itu\\b|\\bseterusnya\\b|" +
+                // Punctuation
+                ";|\\n|、|，|；" +
+                ")\\s*",
+            RegexOption.IGNORE_CASE
+        )
+        val LIST_MARKER = Regex(
+            "^(?:[-*•]|\\d+[.)]|\\b(?:first|second|third|fourth|fifth)\\b[,.:]?|" +
+                "[一二三四五六七八九十]+[、.)])\\s*",
+            RegexOption.IGNORE_CASE
+        )
     }
 }

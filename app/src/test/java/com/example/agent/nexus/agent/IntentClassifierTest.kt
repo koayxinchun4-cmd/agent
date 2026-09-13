@@ -45,4 +45,36 @@ class IntentClassifierTest {
     fun `classifies blank input as general`() {
         assertEquals(AgentIntent.General, classifier.classify("   "))
     }
+
+    // Bahasa Melayu tests
+
+    @Test
+    fun `classifies malay web search intent with cari`() {
+        assertEquals(AgentIntent.WebResearch, classifier.classify("cari maklumat tentang AI"))
+    }
+
+    @Test
+    fun `classifies malay web search intent with jelajah`() {
+        assertEquals(AgentIntent.WebResearch, classifier.classify("jelajah topik ini"))
+    }
+
+    @Test
+    fun `classifies malay file intent with fail`() {
+        assertEquals(AgentIntent.File, classifier.classify("buka fail laporan.pdf"))
+    }
+
+    @Test
+    fun `classifies malay memory intent with ingat`() {
+        assertEquals(AgentIntent.Memory, classifier.classify("ingat perkara ini"))
+    }
+
+    @Test
+    fun `classifies malay app launch intent with buka app`() {
+        assertEquals(AgentIntent.App, classifier.classify("buka app package:com.example.notes"))
+    }
+
+    @Test
+    fun `classifies malay office intent with hamparan`() {
+        assertEquals(AgentIntent.Office, classifier.classify("buat hamparan baru"))
+    }
 }

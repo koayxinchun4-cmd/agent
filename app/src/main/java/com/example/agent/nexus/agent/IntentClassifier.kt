@@ -13,19 +13,23 @@ class IntentClassifier {
         return when {
             isAppRequest(normalized) -> AgentIntent.App
             containsAny(normalized, "github", "pull request", "issue", "ci/cd", "ci") -> AgentIntent.GitHub
-            containsAny(normalized, "office", "document", "spreadsheet", "presentation") ||
+            containsAny(normalized, "office", "document", "spreadsheet", "presentation", "dokumen", "hamparan", "persembahan") ||
                 containsAny(input, "簡報", "試算表") -> AgentIntent.Office
-            containsAny(normalized, "memory", "remember", "forget") || containsAny(input, "記憶", "記住") -> AgentIntent.Memory
-            containsAny(normalized, "skill", "skills") || containsAny(input, "技能") -> AgentIntent.Skills
-            containsAny(normalized, "web", "search", "research") || containsAny(input, "網頁", "搜尋", "搜索", "研究") -> AgentIntent.WebResearch
-            containsAny(normalized, "file", "files") || containsAny(input, "檔案", "文件") -> AgentIntent.File
+            containsAny(normalized, "memory", "remember", "forget", "ingat", "hafal") ||
+                containsAny(input, "記憶", "記住") -> AgentIntent.Memory
+            containsAny(normalized, "skill", "skills", "kemahiran") || containsAny(input, "技能") -> AgentIntent.Skills
+            containsAny(normalized, "web", "search", "research", "cari", "carian", "jelajah", "layari", "internet") ||
+                containsAny(input, "網頁", "搜尋", "搜索", "研究") -> AgentIntent.WebResearch
+            containsAny(normalized, "file", "files", "fail", "dokumen") ||
+                containsAny(input, "檔案", "文件") -> AgentIntent.File
             else -> AgentIntent.General
         }
     }
 
     private fun isAppRequest(input: String): Boolean =
         (input.contains("open app") || input.contains("launch app") ||
-            input.contains("開啟 app") || input.contains("打开 app"))
+            input.contains("開啟 app") || input.contains("打开 app") ||
+            input.contains("buka app"))
 
     private fun containsAny(value: String, vararg terms: String): Boolean =
         terms.any(value::contains)
