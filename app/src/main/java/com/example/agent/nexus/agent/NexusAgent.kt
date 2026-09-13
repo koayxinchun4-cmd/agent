@@ -3,9 +3,12 @@ package com.example.agent.nexus.agent
 import com.example.agent.nexus.memory.AgentExecutionContext
 import com.example.agent.nexus.memory.DefaultMemoryContextProvider
 import com.example.agent.nexus.memory.MemoryContextProvider
+import com.example.agent.nexus.tool.DefaultToolRuntime
 import com.example.agent.nexus.tool.RiskLevel
 import com.example.agent.nexus.tool.ToolRegistry
 import com.example.agent.nexus.tool.ToolResult
+import com.example.agent.nexus.tool.ToolRuntime
+import com.example.agent.nexus.tool.ToolRuntimeResult
 
 /**
  * Core orchestration layer: plan first, select a model route, then execute and
@@ -21,7 +24,8 @@ class NexusAgent(
     private val modelProviders: ModelProviderRegistry = ModelProviderRegistry(
         listOf(LocalModelProvider())
     ),
-    private val memoryContextProvider: MemoryContextProvider = DefaultMemoryContextProvider()
+    private val memoryContextProvider: MemoryContextProvider = DefaultMemoryContextProvider(),
+    private val toolRuntime: ToolRuntime = DefaultToolRuntime()
 ) {
     suspend fun execute(task: AgentTask): AgentResult =
         executeDetailed(task).result
@@ -45,6 +49,7 @@ class NexusAgent(
     ): AgentExecution {
         var currentTask = task
         val projectId = task.metadata[AgentTask.PROJECT_ID]
+        val session = AgentSession(id = task.id, task = task)
         val executionContext = AgentExecutionContext(
             taskId = task.id,
             projectId = projectId,
@@ -56,13 +61,16 @@ class NexusAgent(
         )
         var plan = planAndRoute(currentTask)
         val steps = mutableListOf<AgentStepResult>()
+        val contextStore = AgentContextStore()
 
         fun emit(step: AgentStepResult, attempt: Int = 0) {
             steps += step
+            contextStore.add(AgentObservation("execution", step.output, step.success))
             onProgress(AgentProgress(step = step, attempt = attempt, steps = steps.toList()))
         }
 
         emit(AgentStepResult("understand_request", true, "Request understood"))
+        emit(AgentStepResult("session", true, "Agent session ${session.id} created"))
         emit(AgentStepResult("memory_context", true, "Loaded ${executionContext.memory.items.size} memory item(s)"))
         emit(AgentStepResult("plan", true, "Selected ${plan.toolId ?: "direct answer"} execution path"))
 
@@ -111,13 +119,28 @@ class NexusAgent(
             return AgentExecution(plan, steps, result, context = executionContext)
         }
 
+        val tool = toolRegistry.get(toolId)
+        if (tool == null) {
+            val result = AgentResult.Failure("Nexus 找不到工具：$toolId")
+            emit(AgentStepResult("answer", false, result.message))
+            return AgentExecution(plan, steps, result, context = executionContext)
+        }
+
         var lastResult: ToolResult = ToolResult.Failure("Tool has not executed")
         var attempts = 0
 
         while (attempts < loopConfig.maxAttempts) {
             attempts += 1
             val attemptStep = "use_tool:$toolId#attempt$attempts"
-            lastResult = toolRegistry.execute(toolId, currentTask)
+            val runtimeResult = toolRuntime.execute(
+                sessionId = session.id,
+                task = currentTask,
+                tool = tool
+            )
+            lastResult = when (runtimeResult) {
+                is ToolRuntimeResult.Success -> runtimeResult.result
+                is ToolRuntimeResult.Denied -> ToolResult.Failure(runtimeResult.message)
+            }
             emit(lastResult.toAgentStep(attemptStep), attempts)
 
             when (val verification = verifier.verify(lastResult)) {
@@ -125,6 +148,7 @@ class NexusAgent(
                     val result = AgentResult.Success(
                         "${(lastResult as ToolResult.Success).text}\n\n[Model route: ${plan.route}]"
                     )
+                    contextStore.add(AgentObservation("verification", "Verification passed"))
                     emit(AgentStepResult("verify", true, "Verification passed"), attempts)
                     emit(AgentStepResult("answer", true, result.text), attempts)
                     return AgentExecution(plan, steps, result, attempts, executionContext)
@@ -164,6 +188,7 @@ class NexusAgent(
                         break
                     }
 
+                    emit(AgentStepResult("replanning", true, "Re-planning from failure observations"), attempts)
                     currentTask = recoveryPolicy.adjust(currentTask, diagnosis, attempts)
                     plan = planAndRoute(currentTask)
                     emit(AgentStepResult("adjust_plan", true, "Adjusted input for recovery attempt ${attempts + 1}"), attempts)
@@ -204,9 +229,14 @@ class NexusAgent(
      * tool. The normal Agent path should use [execute] so planning stays central.
      */
     suspend fun execute(task: AgentTask, toolId: String): AgentResult {
-        return when (val result = toolRegistry.execute(toolId, task)) {
-            is ToolResult.Success -> AgentResult.Success(result.text)
-            is ToolResult.Failure -> AgentResult.Failure(result.message, result.cause)
+        val tool = toolRegistry.get(toolId)
+            ?: return AgentResult.Failure("Nexus 找不到工具：$toolId")
+        return when (val result = toolRuntime.execute(task.id, task, tool)) {
+            is ToolRuntimeResult.Success -> when (val toolResult = result.result) {
+                is ToolResult.Success -> AgentResult.Success(toolResult.text)
+                is ToolResult.Failure -> AgentResult.Failure(toolResult.message, toolResult.cause)
+            }
+            is ToolRuntimeResult.Denied -> AgentResult.Failure(result.message)
         }
     }
 }
