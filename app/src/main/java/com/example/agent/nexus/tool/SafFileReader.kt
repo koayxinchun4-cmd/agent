@@ -1,5 +1,6 @@
 package com.example.agent.nexus.tool
 
+import android.net.Uri
 import java.io.InputStream
 
 /** Reads one user-selected SAF document without requiring broad filesystem access. */
@@ -9,6 +10,7 @@ class SafFileReader(
     fun read(uriString: String, maxBytes: Int = MAX_READ_BYTES): ToolResult {
         val uri = uriString.trim()
         if (uri.isEmpty()) return ToolResult.Failure("未提供选取文件的 URI")
+        if (!isValidSafUri(uri)) return ToolResult.Failure("选取文件 URI 无效：仅允许有效的 content:// SAF URI")
         if (maxBytes < 1) return ToolResult.Failure("文件读取上限无效")
 
         return runCatching {
@@ -36,5 +38,10 @@ class SafFileReader(
 
     companion object {
         const val MAX_READ_BYTES = 256 * 1024
+
+        fun isValidSafUri(uriString: String): Boolean {
+            val uri = runCatching { Uri.parse(uriString.trim()) }.getOrNull() ?: return false
+            return uri.scheme.equals("content", ignoreCase = true) && !uri.authority.isNullOrBlank()
+        }
     }
 }
