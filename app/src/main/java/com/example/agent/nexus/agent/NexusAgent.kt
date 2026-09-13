@@ -9,7 +9,8 @@ import com.example.agent.nexus.tool.ToolResult
 
 /**
  * Core orchestration layer: plan first, select a model route, then execute and
- * verify a registered tool when the plan requires one.
+ * verify registered tools. Multi-step plans execute their tool-backed subtasks
+ * in order so the planner contract matches actual execution.
  */
 class NexusAgent(
     private val toolRegistry: ToolRegistry,
@@ -27,16 +28,16 @@ class NexusAgent(
         executeDetailed(task).result
 
     /**
-     * Preflight the planned tool before execution so the UI can request explicit
-     * user confirmation without invoking the tool first.
+     * Preflight all planned tools before execution. The UI can use the first
+     * request to obtain explicit user confirmation before invoking the plan.
      */
     fun previewConfirmation(task: AgentTask): AgentConfirmationRequest? {
         if (task.metadata[AgentTask.CONFIRMATION_GRANTED] == "true") return null
         val plan = planAndRoute(task)
-        val toolId = plan.toolId ?: return null
-        val tool = toolRegistry.get(toolId) ?: return null
-        return tool.takeIf { it.riskLevel == RiskLevel.REQUIRES_CONFIRMATION }
-            ?.let { AgentConfirmationRequest(task = task, tool = it, plan = plan) }
+        return plannedToolIds(plan).asSequence()
+            .mapNotNull(toolRegistry::get)
+            .firstOrNull { it.riskLevel == RiskLevel.REQUIRES_CONFIRMATION }
+            ?.let { tool -> AgentConfirmationRequest(task = task, tool = tool, plan = plan) }
     }
 
     suspend fun executeDetailed(
@@ -54,7 +55,7 @@ class NexusAgent(
             ),
             metadata = task.metadata
         )
-        var plan = planAndRoute(currentTask)
+        val plan = planAndRoute(currentTask)
         val steps = mutableListOf<AgentStepResult>()
 
         fun emit(step: AgentStepResult, attempt: Int = 0) {
@@ -66,123 +67,206 @@ class NexusAgent(
         emit(AgentStepResult("memory_context", true, "Loaded ${executionContext.memory.items.size} memory item(s)"))
         emit(AgentStepResult("plan", true, "Selected ${plan.toolId ?: "direct answer"} execution path"))
 
-        val toolId = plan.toolId
-        if (toolId == null) {
-            val fallbackRoutes = modelProviders.fallbackRoutes(plan.route)
-            if (fallbackRoutes.isEmpty()) {
-                val result = AgentResult.Failure("No model provider is available")
-                emit(AgentStepResult("answer", false, result.message))
-                return AgentExecution(plan, steps, result, context = executionContext)
-            }
-
-            var lastError: Throwable? = null
-            for ((index, route) in fallbackRoutes.withIndex()) {
-                val provider = modelProviders.get(route) ?: continue
-                if (route != plan.route) {
-                    plan = plan.copy(route = route)
-                    emit(AgentStepResult("fallback:${provider.id}", true, "Primary model unavailable; falling back to ${provider.id}"))
-                }
-                try {
-                    emit(AgentStepResult("model:${provider.id}", true, "Generating response"))
-                    val response = provider.generate(
-                        ModelRequest(
-                            prompt = currentTask.input,
-                            taskId = currentTask.id,
-                            metadata = currentTask.metadata
-                        )
-                    )
-                    val result = AgentResult.Success(response.text)
-                    emit(AgentStepResult("verify", true, "Response generated successfully"))
-                    emit(AgentStepResult("answer", true, result.text))
-                    return AgentExecution(plan, steps, result, context = executionContext)
-                } catch (error: Throwable) {
-                    lastError = error
-                    if (index < fallbackRoutes.lastIndex) {
-                        emit(AgentStepResult("model:${provider.id}", false, "Provider failed; trying next available provider"))
-                    }
-                }
-            }
-
-            val result = AgentResult.Failure(
-                "All available model providers failed: ${lastError?.message ?: "unknown error"}",
-                lastError
+        val plannedToolIds = plannedToolIds(plan)
+        val hasToolBackedSubtask = plannedToolIds.isNotEmpty()
+        if (!hasToolBackedSubtask) {
+            return generateModelAnswer(
+                task = currentTask,
+                plan = plan,
+                steps = steps,
+                emit = ::emit,
+                executionContext = executionContext
             )
-            emit(AgentStepResult("answer", false, result.message))
-            return AgentExecution(plan, steps, result, context = executionContext)
         }
 
-        var lastResult: ToolResult = ToolResult.Failure("Tool has not executed")
-        var attempts = 0
+        val observations = mutableListOf<String>()
+        var totalAttempts = 0
+        var lastToolResult: ToolResult? = null
 
-        while (attempts < loopConfig.maxAttempts) {
-            attempts += 1
-            val attemptStep = "use_tool:$toolId#attempt$attempts"
-            lastResult = toolRegistry.execute(toolId, currentTask)
-            emit(lastResult.toAgentStep(attemptStep), attempts)
+        for (index in plan.subtasks.indices) {
+            val subtask = plan.subtasks[index]
+            val toolId = plan.subtaskToolIds.getOrNull(index)
+                ?: plan.toolId.takeIf { plan.subtasks.size == 1 }
+            if (toolId == null) continue
 
-            when (val verification = verifier.verify(lastResult)) {
-                VerificationResult.Passed -> {
-                    val result = AgentResult.Success(
-                        "${(lastResult as ToolResult.Success).text}\n\n[Model route: ${plan.route}]"
-                    )
-                    emit(AgentStepResult("verify", true, "Verification passed"), attempts)
-                    emit(AgentStepResult("answer", true, result.text), attempts)
-                    return AgentExecution(plan, steps, result, attempts, executionContext)
-                }
+            val subtaskTask = currentTask.copy(input = subtask)
+            var attempts = 0
+            var result: ToolResult = ToolResult.Failure("Tool has not executed")
 
-                is VerificationResult.Retry -> {
-                    val diagnosis = when (lastResult) {
-                        is ToolResult.Failure -> recoveryPolicy.diagnose(lastResult)
-                        is ToolResult.Success -> recoveryPolicy.diagnoseVerification(verification.reason)
+            while (attempts < loopConfig.maxAttempts) {
+                attempts += 1
+                totalAttempts += 1
+                val attemptStep = "use_tool:$toolId#attempt$attempts"
+                result = toolRegistry.execute(toolId, subtaskTask)
+                emit(result.toAgentStep(attemptStep), attempts)
+
+                when (val verification = verifier.verify(result)) {
+                    VerificationResult.Passed -> {
+                        emit(AgentStepResult("verify", true, "Verification passed for subtask ${index + 1}"), attempts)
+                        observations += "Subtask ${index + 1} ($subtask) result:\n${(result as ToolResult.Success).text}"
+                        break
                     }
-                    emit(
-                        AgentStepResult(
-                            "diagnose",
-                            false,
-                            when (diagnosis) {
-                                is FailureDiagnosis.Transient -> "Transient failure: ${diagnosis.reason}"
-                                is FailureDiagnosis.Permanent -> "Permanent failure: ${diagnosis.reason}"
-                            }
-                        ),
-                        attempts
-                    )
 
-                    val canRetry = attempts < loopConfig.maxAttempts && diagnosis is FailureDiagnosis.Transient
-                    if (!canRetry) {
+                    is VerificationResult.Retry -> {
+                        val diagnosis = when (result) {
+                            is ToolResult.Failure -> recoveryPolicy.diagnose(result)
+                            is ToolResult.Success -> recoveryPolicy.diagnoseVerification(verification.reason)
+                        }
                         emit(
                             AgentStepResult(
-                                "verify",
+                                "diagnose",
                                 false,
-                                if (diagnosis is FailureDiagnosis.Permanent) {
-                                    "Recovery stopped: failure is permanent"
-                                } else {
-                                    "Recovery stopped: maximum attempts reached"
+                                when (diagnosis) {
+                                    is FailureDiagnosis.Transient -> "Transient failure: ${diagnosis.reason}"
+                                    is FailureDiagnosis.Permanent -> "Permanent failure: ${diagnosis.reason}"
                                 }
                             ),
                             attempts
                         )
-                        break
-                    }
 
-                    currentTask = recoveryPolicy.adjust(currentTask, diagnosis, attempts)
-                    plan = planAndRoute(currentTask)
-                    emit(AgentStepResult("adjust_plan", true, "Adjusted input for recovery attempt ${attempts + 1}"), attempts)
-                    emit(AgentStepResult("verify", false, "Recovery prepared; retrying"), attempts)
+                        val canRetry = attempts < loopConfig.maxAttempts && diagnosis is FailureDiagnosis.Transient
+                        if (!canRetry) {
+                            emit(
+                                AgentStepResult(
+                                    "verify",
+                                    false,
+                                    if (diagnosis is FailureDiagnosis.Permanent) {
+                                        "Recovery stopped: failure is permanent"
+                                    } else {
+                                        "Recovery stopped: maximum attempts reached"
+                                    }
+                                ),
+                                attempts
+                            )
+                            break
+                        }
+
+                        currentTask = recoveryPolicy.adjust(currentTask, diagnosis, attempts)
+                        emit(AgentStepResult("adjust_plan", true, "Adjusted input for recovery attempt ${attempts + 1}"), attempts)
+                        emit(AgentStepResult("verify", false, "Recovery prepared; retrying"), attempts)
+                    }
+                }
+            }
+
+            lastToolResult = result
+            if (result !is ToolResult.Success || result.text.isBlank()) {
+                val failureMessage = when (result) {
+                    is ToolResult.Failure -> result.message
+                    is ToolResult.Success -> "Tool result did not pass verification"
+                }
+                val failure = AgentResult.Failure(
+                    "$failureMessage (model route: ${plan.route}; attempts: $totalAttempts)",
+                    (result as? ToolResult.Failure)?.cause
+                )
+                emit(AgentStepResult("answer", false, failure.message), attempts)
+                return AgentExecution(plan, steps, failure, totalAttempts, executionContext)
+            }
+        }
+
+        // If the final planned subtask is answer-only, use the selected model to
+        // synthesize all verified observations instead of returning raw tool data.
+        val finalSubtask = plan.subtasks.lastOrNull()
+        val finalToolId = if (plan.subtasks.size == 1) {
+            plan.subtaskToolIds.firstOrNull() ?: plan.toolId
+        } else {
+            plan.subtaskToolIds.lastOrNull()
+        }
+        if (finalSubtask != null && finalToolId == null && observations.isNotEmpty()) {
+            val synthesisTask = currentTask.copy(
+                input = buildString {
+                    appendLine(finalSubtask)
+                    appendLine()
+                    appendLine("Verified observations:")
+                    append(observations.joinToString("\n\n"))
+                }
+            )
+            return generateModelAnswer(
+                task = synthesisTask,
+                plan = plan,
+                steps = steps,
+                emit = ::emit,
+                executionContext = executionContext,
+                attempts = totalAttempts
+            )
+        }
+
+        val combined = observations.joinToString("\n\n")
+        val result = if (combined.isNotBlank()) {
+            AgentResult.Success("$combined\n\n[Model route: ${plan.route}]")
+        } else {
+            AgentResult.Failure(
+                "No verified tool result was produced (model route: ${plan.route}; attempts: $totalAttempts)",
+                (lastToolResult as? ToolResult.Failure)?.cause
+            )
+        }
+        val answerMessage = when (result) {
+            is AgentResult.Success -> result.text
+            is AgentResult.Failure -> result.message
+        }
+        emit(AgentStepResult("answer", result is AgentResult.Success, answerMessage), totalAttempts)
+        return AgentExecution(plan, steps, result, totalAttempts, executionContext)
+    }
+
+    private suspend fun generateModelAnswer(
+        task: AgentTask,
+        plan: AgentPlan,
+        steps: MutableList<AgentStepResult>,
+        emit: (AgentStepResult, Int) -> Unit,
+        executionContext: AgentExecutionContext,
+        attempts: Int = 0
+    ): AgentExecution {
+        val fallbackRoutes = modelProviders.fallbackRoutes(plan.route)
+        if (fallbackRoutes.isEmpty()) {
+            val result = AgentResult.Failure("No model provider is available")
+            emit(AgentStepResult("answer", false, result.message), attempts)
+            return AgentExecution(plan, steps, result, attempts, executionContext)
+        }
+
+        var routedPlan = plan
+        var lastError: Throwable? = null
+        for ((index, route) in fallbackRoutes.withIndex()) {
+            val provider = modelProviders.get(route) ?: continue
+            if (route != routedPlan.route) {
+                routedPlan = routedPlan.copy(route = route)
+                emit(AgentStepResult("fallback:${provider.id}", true, "Primary model unavailable; falling back to ${provider.id}"), attempts)
+            }
+            try {
+                emit(AgentStepResult("model:${provider.id}", true, "Generating response"), attempts)
+                val response = provider.generate(
+                    ModelRequest(
+                        prompt = task.input,
+                        taskId = task.id,
+                        metadata = task.metadata
+                    )
+                )
+                val result = AgentResult.Success(response.text)
+                emit(AgentStepResult("verify", true, "Response generated successfully"), attempts)
+                emit(AgentStepResult("answer", true, result.text), attempts)
+                return AgentExecution(routedPlan, steps, result, attempts, executionContext)
+            } catch (error: Throwable) {
+                lastError = error
+                if (index < fallbackRoutes.lastIndex) {
+                    emit(AgentStepResult("model:${provider.id}", false, "Provider failed; trying next available provider"), attempts)
                 }
             }
         }
 
-        val failureMessage = when (lastResult) {
-            is ToolResult.Failure -> lastResult.message
-            is ToolResult.Success -> "Tool result did not pass verification"
-        }
         val result = AgentResult.Failure(
-            "$failureMessage (model route: ${plan.route}; attempts: $attempts)",
-            (lastResult as? ToolResult.Failure)?.cause
+            "All available model providers failed: ${lastError?.message ?: "unknown error"}",
+            lastError
         )
         emit(AgentStepResult("answer", false, result.message), attempts)
-        return AgentExecution(plan, steps, result, attempts, executionContext)
+        return AgentExecution(routedPlan, steps, result, attempts, executionContext)
     }
+
+    private fun plannedToolIds(plan: AgentPlan): List<String> =
+        if (plan.subtasks.size == 1) {
+            listOfNotNull(plan.subtaskToolIds.firstOrNull() ?: plan.toolId)
+        } else if (plan.subtasks.isNotEmpty()) {
+            plan.subtaskToolIds.filterNotNull()
+        } else {
+            listOfNotNull(plan.toolId)
+        }
 
     private fun planAndRoute(task: AgentTask): AgentPlan {
         val initialPlan = planner.plan(

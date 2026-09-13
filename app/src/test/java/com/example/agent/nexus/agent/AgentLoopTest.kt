@@ -92,9 +92,44 @@ class AgentLoopTest {
         assertEquals(1, tool.calls)
     }
 
-    private fun agentWith(tool: AgentTool, config: AgentLoopConfig = AgentLoopConfig()): NexusAgent {
+    @Test
+    fun decomposedToolSubtasksExecuteInOrder() = runBlocking {
+        val first = SequenceTool("web_research", ToolResult.Success("研究结果"))
+        val second = SequenceTool("github", ToolResult.Success("CI 結果"))
+        val agent = agentWith(first, second)
+
+        val execution = agent.executeDetailed(
+            AgentTask("6", "搜尋 repo then 檢查 CI then 整理結果")
+        )
+
+        assertTrue(execution.result is AgentResult.Success)
+        assertEquals(1, first.calls)
+        assertEquals(1, second.calls)
+        assertEquals("搜尋 repo", first.inputs.single())
+        assertEquals("檢查 CI", second.inputs.single())
+        assertTrue(execution.steps.any { it.output.contains("subtask 1") })
+        assertTrue(execution.steps.any { it.output.contains("subtask 2") })
+        assertTrue(execution.steps.any { it.step == "model:local" })
+    }
+
+    @Test
+    fun singleSubtaskLocalFallbackStillExecutesLocalTask() = runBlocking {
+        val tool = SequenceTool("local_task", ToolResult.Success("本機任務完成"))
+        val agent = agentWith(tool)
+
+        val execution = agent.executeDetailed(AgentTask("7", "完成一個一般任務"))
+
+        assertTrue(execution.result is AgentResult.Success)
+        assertEquals(1, tool.calls)
+        assertEquals("完成一個一般任務", tool.inputs.single())
+    }
+
+    private fun agentWith(
+        vararg tools: AgentTool,
+        config: AgentLoopConfig = AgentLoopConfig()
+    ): NexusAgent {
         return NexusAgent(
-            toolRegistry = com.example.agent.nexus.tool.ToolRegistry(listOf(tool)),
+            toolRegistry = com.example.agent.nexus.tool.ToolRegistry(tools.toList()),
             loopConfig = config
         )
     }
@@ -108,10 +143,12 @@ class AgentLoopTest {
 
         var calls: Int = 0
             private set
+        val inputs = mutableListOf<String>()
 
         override suspend fun execute(task: AgentTask): ToolResult {
             val index = calls.coerceAtMost(results.lastIndex)
             calls += 1
+            inputs += task.input
             return results[index]
         }
     }
