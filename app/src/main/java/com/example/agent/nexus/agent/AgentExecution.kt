@@ -3,14 +3,6 @@ package com.example.agent.nexus.agent
 import com.example.agent.nexus.memory.AgentExecutionContext
 import com.example.agent.nexus.tool.ToolResult
 
-/** A single observable step in an Agent run. */
-data class AgentStepResult(
-    val step: String,
-    val success: Boolean,
-    val output: String
-)
-
-/** Execution result with context, plan, attempts and tool steps kept separate for UI/logging. */
 data class AgentExecution(
     val plan: AgentPlan,
     val steps: List<AgentStepResult>,
