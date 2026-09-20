@@ -88,3 +88,91 @@ class IntentClassifierTest {
         assertEquals(AgentIntent.Office, classifier.classify("write a report"))
     }
 }
+
+
+    // === 新增：马来语 + 危险意图测试 (2025-09-20) ===
+
+    @Test
+    fun `classifies malay app intent with buat`() {
+        assertEquals(AgentIntent.App, classifier.classify("buat app baru"))
+    }
+
+    @Test
+    fun `classifies malay app intent with tengok app`() {
+        assertEquals(AgentIntent.App, classifier.classify("tengok app ni"))
+    }
+
+    @Test
+    fun `classifies malay app intent with guna app`() {
+        assertEquals(AgentIntent.App, classifier.classify("guna app whatsapp"))
+    }
+
+    @Test
+    fun `classifies malay web intent with check`() {
+        assertEquals(AgentIntent.WebResearch, classifier.classify("check cuaca hari ini"))
+    }
+
+    @Test
+    fun `classifies malay web intent with harga`() {
+        assertEquals(AgentIntent.WebResearch, classifier.classify("check harga petrol"))
+    }
+
+    @Test
+    fun `classifies malay web intent with berita`() {
+        assertEquals(AgentIntent.WebResearch, classifier.classify("berita terkini pasal AI"))
+    }
+
+    @Test
+    fun `classifies malay memory intent with simpan`() {
+        assertEquals(AgentIntent.Memory, classifier.classify("simpan maklumat ni"))
+    }
+
+    @Test
+    fun `classifies malay memory intent with save`() {
+        assertEquals(AgentIntent.Memory, classifier.classify("save benda ni"))
+    }
+
+    @Test
+    fun `classifies malay file intent with muat turun`() {
+        assertEquals(AgentIntent.File, classifier.classify("muat turun fail ini"))
+    }
+
+    @Test
+    fun `classifies malay file intent with muat naik`() {
+        assertEquals(AgentIntent.File, classifier.classify("muat naik gambar"))
+    }
+
+    @Test
+    fun `classifies malay office intent with borang`() {
+        assertEquals(AgentIntent.Office, classifier.classify("buat borang google form"))
+    }
+
+    @Test
+    fun `classifies dangerous intent with padam`() {
+        assertEquals(AgentIntent.Dangerous, classifier.classify("padam fail penting"))
+    }
+
+    @Test
+    fun `classifies dangerous intent with buang`() {
+        assertEquals(AgentIntent.Dangerous, classifier.classify("buang app ni"))
+    }
+
+    @Test
+    fun `classifies dangerous intent with format`() {
+        assertEquals(AgentIntent.Dangerous, classifier.classify("format phone"))
+    }
+
+    @Test
+    fun `classifies dangerous intent with hapus`() {
+        assertEquals(AgentIntent.Dangerous, classifier.classify("hapus semua data"))
+    }
+
+    @Test
+    fun `classifies code-switching intent buka app`() {
+        assertEquals(AgentIntent.App, classifier.classify("saya nak buka app grab"))
+    }
+
+    @Test
+    fun `classifies code-switching web intent`() {
+        assertEquals(AgentIntent.WebResearch, classifier.classify("tolong cari harga iPhone"))
+    }

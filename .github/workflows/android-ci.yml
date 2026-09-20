@@ -68,7 +68,10 @@ jobs:
       - name: Create local environment file
         run: printf 'GEMINI_API_KEY=%s\n' "${{ secrets.GEMINI_API_KEY }}" > .env
 
-      - name: Run unit tests
+      - name: Run IntentClassifier tests (fast feedback)
+        run: ./gradlew :app:testDebugUnitTest --tests "com.example.agent.nexus.agent.IntentClassifierTest" --stacktrace --no-daemon
+
+      - name: Run full unit tests
         run: ./gradlew :app:testDebugUnitTest --stacktrace --no-daemon
 
       - name: Run lint
