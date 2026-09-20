@@ -53,5 +53,6 @@ class AgentPlanner(
         AgentIntent.WebResearch -> "web_research".takeIf(availableToolIds::contains)
         AgentIntent.File -> "file_agent".takeIf(availableToolIds::contains)
         AgentIntent.General -> null
+        AgentIntent.Dangerous -> null  // blocked: no tool dispatched for dangerous ops
     }
 }
