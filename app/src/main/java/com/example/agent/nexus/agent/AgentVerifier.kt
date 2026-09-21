@@ -28,13 +28,3 @@ class AgentVerifier {
         )
     }
 }
-
-/** Agent Loop v1 execution limits. */
-data class AgentLoopConfig(
-    /** Total tool execution attempts, including the first attempt. */
-    val maxAttempts: Int = 2
-) {
-    init {
-        require(maxAttempts >= 1) { "maxAttempts 必须至少为 1" }
-    }
-}
