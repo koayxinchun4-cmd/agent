@@ -87,7 +87,6 @@ class IntentClassifierTest {
     fun `classifies english office intent with report keyword`() {
         assertEquals(AgentIntent.Office, classifier.classify("write a report"))
     }
-}
 
 
     // === 新增：马来语 + 危险意图测试 (2025-09-20) ===
@@ -176,3 +175,4 @@ class IntentClassifierTest {
     fun `classifies code-switching web intent`() {
         assertEquals(AgentIntent.WebResearch, classifier.classify("tolong cari harga iPhone"))
     }
+}
